@@ -4,7 +4,7 @@ import { HANDLER_TYPE, HandlerFunction, HandlerType, Orizuru } from "@garycraft/
 import { getAppContext } from "@src/engine/utils/Composable";
 import { useImporterRecursive } from "@src/engine/utils/Importing";
 import { getModulePath } from "@src/engine/utils/Runtime";
-import { ApplicationContext } from "@src/engine/types/Engine";
+import type { ApplicationContext } from "@src/engine/types/Engine";
 
 
 export default {

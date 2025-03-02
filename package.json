@@ -10,13 +10,11 @@
 	},
 	"type": "commonjs",
 	"scripts": {
-		"start": "node dist/index.js",
-		"build": "npm run clean && npm run tsc && npm run tsc-alias",
+		"deploy": "just run",
 		"clean": "rimraf dist",
 		"tsc": "tsc --build tsconfig.json",
 		"tsc-alias": "tsc-alias -p tsconfig.json",
-		"deploy": "npm run build && npm run start",
-		"dev": "npx nodemon --exec \"npm run deploy\" -e \"ts\" -w src"
+		"dev": "nodemon --exec \"npm run deploy\" -e \"ts\" -w src"
 	},
 	"repository": {
 		"type": "git",
@@ -37,6 +35,8 @@
 		"@typescript-eslint/eslint-plugin": "^5.29.0",
 		"@typescript-eslint/parser": "^5.29.0",
 		"eslint": "^8.13.0",
+		"just-install": "^2.0.2",
+		"nodemon": "^3.1.9",
 		"sqlite3": "^5.1.6",
 		"tsc-alias": "^1.8.2",
 		"typescript": "5.4.5"
@@ -63,7 +63,7 @@
 		"tmi.js": "^1.8.5",
 		"typeorm": "^0.3.17",
 		"uuid": "^9.0.1",
-		"vite": "^5.3.1",
+		"vite": "^6.2.0",
 		"winston": "^3.7.2",
 		"zod": "^3.22.4"
 	}

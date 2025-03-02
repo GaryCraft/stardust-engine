@@ -1,8 +1,7 @@
-import { ApplicationContext } from "@src/engine/types/Engine";
+import type { ApplicationContext } from "@src/engine/types/Engine";
 import { CliCommand } from "@src/engine/types/Executors";
-import { getDatabase } from "@src/engine/utils/Composable";
 import { getConfig } from "@src/engine/utils/Configuration";
-import { clear, error, info, debug } from "@src/engine/utils/Logger";
+import { error, debug } from "@src/engine/utils/Logger";
 
 export default {
 	name: "eval",

@@ -2,7 +2,7 @@ import { HttpHandler } from "@src/engine/http";
 import CLI from "@src/engine/cli";
 import EventEmitter2 from "eventemitter2";
 import { getConfig, getConfigProperty } from "@src/engine/utils/Configuration";
-import { ApplicationContext } from "./engine/types/Engine";
+import type { ApplicationContext } from "./engine/types/Engine";
 import { debug, warn } from "@src/engine/utils/Logger";
 import { getProcessPath, getRootPath } from "@src/engine/utils/Runtime";
 import { HookExecutor } from "./engine/types/Executors";
@@ -58,12 +58,13 @@ debug("Application context created");
 export const init = async () => {
 	debug("Initializing application");
 	await useImporterRecursive(`${getRootPath()}/engine/hooks`,
-		function validator(hookModule: any, file, dir): hookModule is { default: HookExecutor } {
-			if (!hookModule?.default) {
+		function validator(hookModule: any, file, dir): hookModule is HookExecutor  {
+			if (!hookModule) {
 				warn(`Hook ${file} from ${dir} has no default export`);
+				debug(hookModule);
 				return false;
 			}
-			if (typeof hookModule.default !== "function") {
+			if (typeof hookModule !== "function") {
 				warn(`Hook ${file} from ${dir} is invalid`);
 				return false;
 			}
@@ -76,7 +77,7 @@ export const init = async () => {
 			debug(`Binding hook ${hookName} from ${namespaceName}`);
 			appCtx.events.on(
 				`${namespaceName}:${hookName}`,
-				hookModule.default.bind(null, appCtx)
+				hookModule.bind(null, appCtx)
 			);
 		});
 	appCtx.events.onAny((event) => {

@@ -127,7 +127,6 @@ export default {
 					return;
 				}
 				res.status(response.status).set(response.headers).send(response.data)
-
 			});
 			debug("Vite dev server started");
 			ctx.emit("ready");

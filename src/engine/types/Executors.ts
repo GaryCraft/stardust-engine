@@ -1,6 +1,6 @@
 import { Parseable, ValidateProperty } from "parzival";
-import { Response, Request } from "express";
-import { ApplicationContext } from "./Engine";
+import type { Response, Request } from "express";
+import type { ApplicationContext } from "./Engine";
 import SocketIO from "socket.io";
 
 @Parseable()

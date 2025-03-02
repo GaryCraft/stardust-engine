@@ -1,7 +1,5 @@
 import { HTTPRouteHandler } from "@src/engine/types/Executors";
-import { getAppContext } from "@src/engine/utils/Composable";
-import { debug, info, warn } from "@src/engine/utils/Logger";
-import { Request, Response } from "express";
+import { info } from "@src/engine/utils/Logger";
 import { callbackHandler, doWebhookBehavior } from "../eventsub";
 
 const TYPE_TWITCH_CHANNEL_MESSAGE = "webhook_callback_verification"

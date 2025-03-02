@@ -1,6 +1,6 @@
 import fs from "fs";
 import Module, { ModuleCfgKey, XModuleConfigs } from "@src/engine/modules";
-import { ApplicationContext } from "@src/engine/types/Engine";
+import type { ApplicationContext } from "@src/engine/types/Engine";
 import { debug, info, warn } from "@src/engine/utils/Logger";
 import { getProcessPath, getRootPath, isRunningAsCompiled } from "@src/engine/utils/Runtime";
 import { objectSchemaFrom, validateObject } from "parzival";
@@ -8,7 +8,22 @@ import { getConfigProperty } from "@src/engine/utils/Configuration";
 import { useImporterRecursive } from "@src/engine/utils/Importing";
 import { CliCommand, HTTPRouteHandler, HookExecutor, ScheduledTask } from "@src/engine/types/Executors";
 import { EventEmitter } from "events";
+import type { GeneralEventEmitter } from "eventemitter2";
 import ModuleConfigs from "@src/config/modules";
+
+type GeneralEmmiterAdapted<T extends EventEmitter> = T & GeneralEventEmitter;
+
+const adaptEmitter = <T extends EventEmitter>(emitter: T): GeneralEmmiterAdapted<T> => {
+	// Bind addEventListener as alias for addListener
+	Object.defineProperty(emitter, "addEventListener", {
+		value: emitter.addListener,
+	});
+	// Bind removeEventListener as alias for removeListener
+	Object.defineProperty(emitter, "removeEventListener", {
+		value: emitter.removeListener,
+	});
+	return emitter as GeneralEmmiterAdapted<T>;
+}
 
 
 export default async function (appCtx: ApplicationContext) {
@@ -31,8 +46,9 @@ export default async function (appCtx: ApplicationContext) {
 		if (fs.statSync(`${getRootPath()}/modules/${fsdir}`).isDirectory()) {
 			debug(`Loading module ${fsdir}`);
 			const module = (await import(`${getRootPath()}/modules/${fsdir}/index${isRunningAsCompiled() ? ".js" : ".ts"}`)).default;
-			const def = module.default;
+			const def = module;
 			if (!validateObject<Module<EventEmitter, keyof ModuleConfigs>>(def, moduleSchema)) {
+				debug("Invalid Module", def);
 				throw new Error(`Module ${fsdir} is invalid`);
 			}
 			const config = getConfigProperty(`modules.${fsdir}`) as XModuleConfigs[ModuleCfgKey]
@@ -42,16 +58,22 @@ export default async function (appCtx: ApplicationContext) {
 				module: def,
 				ctx: moduleLoaded,
 			});
+
+			// Relay all events from the module to the main event bus
+			appCtx.events.listenTo(adaptEmitter(moduleLoaded), {
+				"*": `modules:${fsdir}:*`,
+			});
+
 			// Load hooks if present
 			if (def.paths?.hooks) {
 				debug(`Loading Module Hooks for ${fsdir}`);
 				await useImporterRecursive(`${getRootPath()}/modules/${fsdir}/${def.paths?.hooks ?? "hooks"}`,
-					function validator(hookModule: any, file, dir): hookModule is { default: HookExecutor } {
-						if (!hookModule?.default) {
+					function validator(hookModule: any, file, dir): hookModule is HookExecutor {
+						if (!hookModule) {
 							warn(`Hook ${file} from ${dir} has no default export`);
 							return false;
 						}
-						if (typeof hookModule.default !== "function") {
+						if (typeof hookModule !== "function") {
 							warn(`Hook ${file} from ${dir} is invalid`);
 							return false;
 						}
@@ -64,7 +86,7 @@ export default async function (appCtx: ApplicationContext) {
 						appCtx.events.on(
 							namespacedName,
 							// @ts-ignore
-							hookModule.default.bind(null, moduleLoaded)
+							hookModule.bind(null, moduleLoaded)
 						);
 						debug(`Propagating hook ${namespacedName}`);
 						appCtx.events.listenTo(appCtx.modman.modules.get(fsdir)!.ctx, {
@@ -78,19 +100,19 @@ export default async function (appCtx: ApplicationContext) {
 				debug(`Loading Module Commands for ${fsdir}`);
 				const validationSchema = objectSchemaFrom(CliCommand);
 				await useImporterRecursive(`${getRootPath()}/modules/${fsdir}/${def.paths?.commands ?? "commands"}`,
-					function validator(commandFile: any, file, dir): commandFile is { default: CliCommand } {
-						if (!commandFile?.default) {
+					function validator(commandFile: any, file, dir): commandFile is CliCommand {
+						if (!commandFile) {
 							warn(`Command ${file} from ${dir} has no default export`);
 							return false;
 						}
-						if (!validateObject(commandFile.default, validationSchema)) {
+						if (!validateObject(commandFile, validationSchema)) {
 							warn(`Command ${file} from ${dir} is invalid`);
 							return false;
 						}
 						return true;
 					},
 					function loader(commandModule, file, dir) {
-						const command = commandModule.default;
+						const command = commandModule;
 						const namespacedName = `${fsdir}-${command.name}`;
 						appCtx.cli.commands.set(namespacedName, command);
 						debug(`Loaded command ${namespacedName}`);
@@ -102,12 +124,12 @@ export default async function (appCtx: ApplicationContext) {
 				debug(`Loading Module Routes for ${fsdir}`);
 				const validationSchema = objectSchemaFrom(HTTPRouteHandler);
 				await useImporterRecursive(`${getRootPath()}/modules/${fsdir}/${def.paths?.routes ?? "routes"}`,
-					function validator(routeFile: any, file, dir): routeFile is { default: HTTPRouteHandler } {
-						if (!routeFile?.default) {
+					function validator(routeFile: any, file, dir): routeFile is HTTPRouteHandler {
+						if (!routeFile) {
 							warn(`Route ${file} from ${dir} has no default export`);
 							return false;
 						}
-						if (!validateObject(routeFile.default, validationSchema)) {
+						if (!validateObject(routeFile, validationSchema)) {
 							warn(`Route ${file} from ${dir} is invalid`);
 							return false;
 						}
@@ -118,7 +140,7 @@ export default async function (appCtx: ApplicationContext) {
 						const namespacedName = `${parsedRoute}`;
 						debug(`Registering route ${file} as ${parsedRoute}`);
 						const IRoute = appCtx.http.server.route(parsedRoute);
-						const route = routeModule.default;
+						const route = routeModule;
 						if (route.get) IRoute.get(route.get);
 						if (route.post) IRoute.post(route.post);
 						if (route.put) IRoute.put(route.put);
@@ -132,19 +154,19 @@ export default async function (appCtx: ApplicationContext) {
 				debug(`Loading Module Tasks for ${fsdir}`);
 				const validationSchema = objectSchemaFrom(ScheduledTask);
 				await useImporterRecursive(`${getRootPath()}/modules/${fsdir}/${def.paths?.tasks ?? "tasks"}`,
-					function validator(taskFile: any, file, dir): taskFile is { default: ScheduledTask } {
-						if (!taskFile?.default) {
+					function validator(taskFile: any, file, dir): taskFile is ScheduledTask {
+						if (!taskFile) {
 							warn(`Task ${file} from ${dir} has no default export`);
 							return false;
 						}
-						if (!validateObject(taskFile.default, validationSchema)) {
+						if (!validateObject(taskFile, validationSchema)) {
 							warn(`Task ${file} from ${dir} is invalid`);
 							return false;
 						}
 						return true;
 					},
 					function loader(taskMod, file, dir) {
-						const task = taskMod.default;
+						const task = taskMod;
 						appCtx.tasks.jobs.set(task.name, task);
 						debug(`Loaded task ${task.name}`);
 					}

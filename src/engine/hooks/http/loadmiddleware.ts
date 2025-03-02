@@ -1,4 +1,4 @@
-import { ApplicationContext } from "@src/engine/types/Engine";
+import type { ApplicationContext } from "@src/engine/types/Engine";
 import { HTTPMiddleware, HTTPRouteHandler } from "@src/engine/types/Executors";
 import { useImporterRecursive } from "@src/engine/utils/Importing";
 import { debug, info, warn } from "@src/engine/utils/Logger";
@@ -9,12 +9,12 @@ export default async function (appCtx: ApplicationContext) {
 	const validationSchema = objectSchemaFrom(HTTPMiddleware);
 	debug("Loading middleware...");
 	await useImporterRecursive(`${getRootPath()}/http/middleware`,
-		function validator(middlewareFile: any, file, dir): middlewareFile is { default: HTTPMiddleware } {
-			if (!middlewareFile?.default) {
+		function validator(middlewareFile: any, file, dir): middlewareFile is HTTPMiddleware {
+			if (!middlewareFile) {
 				warn(`Middleware ${file} from ${dir} has no default export`);
 				return false;
 			}
-			if (!validateObject(middlewareFile.default, validationSchema)) {
+			if (!validateObject(middlewareFile, validationSchema)) {
 				warn(`Middleware ${file} from ${dir} is invalid`);
 				return false;
 			}
@@ -22,7 +22,7 @@ export default async function (appCtx: ApplicationContext) {
 		},
 		function loader(middlewareModule, file, dir) {
 			const parsedRoute = `${dir.replace(getRootPath() + "/http/middleware", "")}/${file.split(".")[0]}`.replace(/\$/g, ":");
-			const midd = middlewareModule.default;
+			const midd = middlewareModule;
 			// If base directory is middleware, then it's a global middleware (it doesn't have more than the file name in its route), remove .ts and .js extensions
 			if (parsedRoute.startsWith("/" + file.replace(/\.[tj]s$/, ""))) {
 				debug(`Registering middleware ${file} as global middleware`);

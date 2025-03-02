@@ -1,4 +1,4 @@
-import { ApplicationContext } from "../types/Engine";
+import type { ApplicationContext } from "../types/Engine";
 import { info } from "../utils/Logger";
 
 export default async function(appCtx: ApplicationContext) {

@@ -1,4 +1,4 @@
-import { ApplicationContext } from "@src/engine/types/Engine";
+import type { ApplicationContext } from "@src/engine/types/Engine";
 import { CliCommand } from "@src/engine/types/Executors";
 import { clear } from "@src/engine/utils/Logger";
 

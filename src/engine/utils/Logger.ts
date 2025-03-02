@@ -46,7 +46,7 @@ export function getCurrentModule(stack: string) {
 	});
 	const matches = filtered[2]?.match(moduleRegex) || filtered[0]?.match(moduleRegex);
 	const cont = matches ? matches[0] : "unknown";
-	return cont.slice(0, -3).slice(5);
+	return cont.slice(0, -3).slice(4);
 }
 function getLogDate() {
 	const date = new Date();

@@ -1,4 +1,4 @@
-import { ApplicationContext } from "@src/engine/types/Engine";
+import type { ApplicationContext } from "@src/engine/types/Engine";
 import { ScheduledTask } from "@src/engine/types/Executors";
 import { info } from "@src/engine/utils/Logger";
 

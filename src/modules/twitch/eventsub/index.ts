@@ -1,6 +1,6 @@
 import { getAppContext } from "@src/engine/utils/Composable";
 import { debug, info, warn } from "@src/engine/utils/Logger";
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 
 const TWITCH_SUBSCRIBE_API_URL = "https://api.twitch.tv/helix/eventsub/subscriptions"
 

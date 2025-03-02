@@ -1,5 +1,5 @@
 import { HandlerFunction } from "@garycraft/orizuru";
-import { ApplicationContext } from "@src/engine/types/Engine";
+import type { ApplicationContext } from "@src/engine/types/Engine";
 
 const fn: HandlerFunction<ApplicationContext, "Auth"> = async (context, req) => {
 	return {
