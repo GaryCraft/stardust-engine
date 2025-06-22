@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Remove UDM Modules
+      - name: Remove SDM Modules
         ## Delete all src/modules folders excepting discord
         ## Also Delete all the src/config/modules files, excepting index.ts and discord.ts
         ## And delete all text between //$StripStart to //$StripEnd comments

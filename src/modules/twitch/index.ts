@@ -7,7 +7,7 @@ export default {
 	paths: {
 		routes: "http",
 	},
-	loadFunction: async (config) => {
+	create: async (config) => {
 		return new EventEmitter();
 	},
 	initFunction: async (ctx, config) => {

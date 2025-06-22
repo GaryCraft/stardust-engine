@@ -21,7 +21,7 @@ const WebBuildToPath = path.join(getWebPublicDir());
 
 export default {
 	name: "webui",
-	loadFunction: async (config) => {
+	create: async (config) => {
 		return new EventEmitter();
 	},
 	initFunction: async (ctx, config) => {

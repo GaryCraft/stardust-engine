@@ -36,10 +36,11 @@ class ModulePaths {
 	routes?: string;
 }
 
-export type ModuleCfgKey = keyof XModuleConfigs
+export type NModuleCfgKey = keyof XModuleConfigs
+export type ModuleCfgKey = keyof GlobalConfig["modules"]
 
 @Parseable()
-export default class Module<CTX extends EventEmitter, CFGKey extends ModuleCfgKey = "none"> {
+export default class Module<CTX extends EventEmitter, CFGKey extends NModuleCfgKey = "none"> {
 	@ValidateProperty({
 		type: "string",
 	})
@@ -58,7 +59,7 @@ export default class Module<CTX extends EventEmitter, CFGKey extends ModuleCfgKe
 		validateArguments: false,
 		validateReturns: false,
 	})
-	loadFunction!: (
+	create!: (
 		config: CFGKey extends "none" ? undefined : XModuleConfigs[CFGKey]
 	) => Promise<CTX>;
 
@@ -76,6 +77,7 @@ export default class Module<CTX extends EventEmitter, CFGKey extends ModuleCfgKe
 export class ModuleManager {
 	readonly modules: Map<string, {
 		module: Module<any, any>,
+		absolutePath: string,
 		ctx: any,
 	}>;
 	constructor() {

@@ -8,9 +8,9 @@ const routes = [
 		name: 'Index'
 	},
 	{
-		path: '/utilitydust',
-		component: () => import('@/pages/UtilityDust.vue'),
-		name: 'utilitydust'
+		path: '/stardust',
+		component: () => import('@/pages/stardust.vue'),
+		name: 'stardust'
 	},
 ]
 

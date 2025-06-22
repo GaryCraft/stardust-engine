@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div class="logo">
-			<h1>UtilityDust</h1>
+			<h1>stardust-engine</h1>
 		</div>
 		<nav class="flex justify-center">
 			<ul class="flex space-x-4">

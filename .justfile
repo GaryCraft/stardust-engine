@@ -16,9 +16,6 @@ run:
 	@bun src/index.ts
 
 dev:
-	#Depends
-	just depends
-
 	# Start Engine
 	@echo "Starting"
-	@bun dev
+	@export SD_ENV=development && bun dev

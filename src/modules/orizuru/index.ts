@@ -9,7 +9,7 @@ import type { ApplicationContext } from "@src/engine/types/Engine";
 
 export default {
 	name: "orizuru",
-	loadFunction: async (config) => {
+	create: async (config) => {
 		const o = new Orizuru(getAppContext())
 		// Load handlers
 		debug("Loading Orizuru handlers")

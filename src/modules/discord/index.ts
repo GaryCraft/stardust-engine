@@ -31,7 +31,7 @@ export default {
 		hooks: "hooks",
 		commands: "cli",
 	},
-	loadFunction: async (config) => {
+	create: async (config) => {
 		let intents: GatewayIntentBits[] = [];
 		if (getConfigValue("node_env") === "development") {
 			intents = nonPrivilegedIntents.concat(privilegedIntents);

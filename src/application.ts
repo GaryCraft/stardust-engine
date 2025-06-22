@@ -4,7 +4,7 @@ import EventEmitter2 from "eventemitter2";
 import { getConfig, getConfigProperty } from "@src/engine/utils/Configuration";
 import type { ApplicationContext } from "./engine/types/Engine";
 import { debug, warn } from "@src/engine/utils/Logger";
-import { getProcessPath, getRootPath } from "@src/engine/utils/Runtime";
+import { getRootPath, getTempPath } from "@src/engine/utils/Runtime";
 import { HookExecutor } from "./engine/types/Executors";
 import { useImporterRecursive } from "./engine/utils/Importing";
 import { DataSource } from "typeorm";
@@ -20,7 +20,7 @@ async function emitAndAwaitMultiple(emitter: EventEmitter2, events: string[]) {
 debug("Creating application context");
 const appCtx = {
 	events: new EventEmitter2({
-		wildcard: false,
+		wildcard: true,
 		delimiter: ":",
 		newListener: false,
 		removeListener: false,
@@ -34,7 +34,7 @@ const appCtx = {
 	database: new DataSource({
 		type: getConfigProperty<DatabaseConfig["type"]>("database.type") || "sqlite",
 
-		database: getConfigProperty<DatabaseConfig["type"]>("database.type") == "sqlite" ? `${getProcessPath()}/temp/database.sqlite` : (getConfigProperty<DatabaseConfig["database"]>("database.database") || "database"),
+		database: getConfigProperty<DatabaseConfig["type"]>("database.type") == "sqlite" ? `${getTempPath()}/database.sqlite` : (getConfigProperty<DatabaseConfig["database"]>("database.database") || "database"),
 		port: getConfigProperty<DatabaseConfig["port"]>("database.port") || 3306,
 		username: getConfigProperty<DatabaseConfig["user"]>("database.user") || "root",
 		password: getConfigProperty<DatabaseConfig["password"]>("database.password") || "",

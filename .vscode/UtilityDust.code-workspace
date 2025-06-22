@@ -28,5 +28,11 @@
 			"titleBar.inactiveForeground": "#e7e7e799"
 		},
 		"peacock.remoteColor": "#471434"
+	},
+	"extensions": {
+		"recommendations": [
+			"vue.volar",
+			"bradlc.vscode-tailwindcss"
+		]
 	}
 }

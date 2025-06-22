@@ -27,7 +27,7 @@ module.exports = {
 			token: process.env.DISCORD_TOKEN,
 			activity: {
 				type: "PLAYING",
-				name: "UtilityDust development",
+				name: "stardust-engine development",
 			},
 			admins: [],
 			defaultEmbedColor: "FFFFFF",

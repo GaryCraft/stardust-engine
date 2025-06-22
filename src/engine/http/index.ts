@@ -30,7 +30,7 @@ export class HttpHandler {
 		});
 
 		this.server.get("/api-info", function (req, res) {
-			return res.send("This is an UtilityDust based API");
+			return res.send("This is an stardust-engine based API");
 		});
 	}
 	listen(port: number, cb?: () => void) {

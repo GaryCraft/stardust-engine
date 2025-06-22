@@ -1,7 +1,7 @@
 import type { ApplicationContext } from "@src/engine/types/Engine";
 import { CliCommand } from "@src/engine/types/Executors";
 import { getConfig } from "@src/engine/utils/Configuration";
-import { error, debug } from "@src/engine/utils/Logger";
+import { error, debug, warn } from "@src/engine/utils/Logger";
 
 export default {
 	name: "eval",
@@ -9,7 +9,7 @@ export default {
 	usage: "eval <code>",
 	execute: async (app: ApplicationContext, args: string[]) => {
 		if (getConfig().node_env !== "development") {
-			error("This command can only be used in development mode, please enable only in a development environment");
+			warn("This command should only be used in development mode, please enable only in a development environment");
 			return;
 		}
 		const code = args.join(" ");

@@ -8,7 +8,7 @@ export default {
 	paths: {
 		hooks: "hooks",
 	},
-	loadFunction: async (config) => {
+	create: async (config) => {
 		return new I18nModule()
 	},
 	initFunction: async (ctx, config) => {

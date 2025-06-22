@@ -1,10 +1,10 @@
 
-# UtilityDust
+# stardust-engine
 
-## What is UtilityDust?
+## What is stardust-engine?
 
-UtilityDust is an open source NodeJS Event-Based Application Engine. Made to be easy to use, and extend.
-if you find any bugs or have any suggestions, please open an issue on the [GitHub Issues Tab](https://github.com/GaryCraft/UtilityDust/issues)
+stardust-engine is an open source NodeJS Event-Based Application Engine. Made to be easy to use, and extend.
+if you find any bugs or have any suggestions, please open an issue on the [GitHub Issues Tab](https://github.com/GaryCraft/stardust-engine/issues)
 
 This engine is open source and is licensed under the [MIT License](https://opensource.org/licenses/MIT).
 
@@ -31,13 +31,11 @@ So the main template remains clean and without bloat.
 - [ ] Orizuru Module
 - [x] i18n Module (internal)
 
-but you can also create your own modules, and publish them to npm.
-we'll try to mantain the name format as `udm-<name>`
-and have a quick way to install them.
+but you can also create your own modules.
 
 # Default Configuration
 
-The default configuration for UtilityDust is for a very simple discord bot, with probably a dashboard.
+The default configuration for stardust-engine is for a very simple discord bot, with probably a dashboard.
 As it ships default with the discord client module, and the HTTP server configured to use a **public** directory.
 
 # How to use
@@ -47,7 +45,7 @@ Specially the discord client module, as it is the most normalized as to how the 
 
 ## Docs
 
-UtilityDust supports many environment variables to customize its behavior, so you can check the [Environment Variables](docs/env_vars.md) for more information.
+stardust-engine supports many environment variables to customize its behavior, so you can check the [Environment Variables](docs/env_vars.md) for more information.
 
 ## Modules
 
@@ -84,5 +82,5 @@ Then the configuration file is loaded, then validated and parsed, if it is not v
 
 ## Commands
 
-UtilityDust by default has a CLI, that can be used to run commands.
+stardust-engine by default has a CLI, that can be used to run commands.
 You can add commands to the commands folder, and they will be loaded automatically.

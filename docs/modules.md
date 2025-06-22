@@ -1,10 +1,10 @@
-# UtilityDust Modules
+# stardust-engine Modules
 
-UtilityDust is a **modular** application engine, and as such, it supports modules. Modules are used to extend the functionality of the application, without having to modify the engine itself.
+stardust-engine is a **modular** application engine, and as such, it supports modules. Modules are used to extend the functionality of the application, without having to modify the engine itself.
 
 ## Module structure
 
-A module is a folder within the `modules` directory, and it should contain an `index` file in it. UtilityDust will automatically load it, expecting it to satisfy the Module type, with a respective configuration key, and eventEmitter class.
+A module is a folder within the `modules` directory, and it should contain an `index` file in it. stardust-engine will automatically load it, expecting it to satisfy the Module type, with a respective configuration key, and eventEmitter class.
 
 For reference you can check out the [Discord Module](../src/modules/discord/index.ts) as an example.
 
@@ -22,6 +22,6 @@ Apart from that you can make any folder or file in the module folder, and it wil
 
 ## Module Context
 
-As UtilityDust is mostly Event-Based, all module contexts should inherit the `EventEmitter` class, allowing for the relay of function calls and messages between them and the engine.
+As stardust-engine is mostly Event-Based, all module contexts should inherit the `EventEmitter` class, allowing for the relay of function calls and messages between them and the engine.
 
 Many libraries and clients like discord.js, already do so, thus implementing this should be easy.

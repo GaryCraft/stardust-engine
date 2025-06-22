@@ -1,5 +1,5 @@
 import fs from "fs";
-import Module, { ModuleCfgKey, XModuleConfigs } from "@src/engine/modules";
+import Module, { getModule, NModuleCfgKey, XModuleConfigs } from "@src/engine/modules";
 import type { ApplicationContext } from "@src/engine/types/Engine";
 import { debug, info, warn } from "@src/engine/utils/Logger";
 import { getProcessPath, getRootPath, isRunningAsCompiled } from "@src/engine/utils/Runtime";
@@ -10,30 +10,52 @@ import { CliCommand, HTTPRouteHandler, HookExecutor, ScheduledTask } from "@src/
 import { EventEmitter } from "events";
 import type { GeneralEventEmitter } from "eventemitter2";
 import ModuleConfigs from "@src/config/modules";
+import path from "path";
+import { declareTypings } from "@src/engine/utils/TypingsGen";
 
 type GeneralEmmiterAdapted<T extends EventEmitter> = T & GeneralEventEmitter;
 
 const adaptEmitter = <T extends EventEmitter>(emitter: T): GeneralEmmiterAdapted<T> => {
 	// Bind addEventListener as alias for addListener
 	Object.defineProperty(emitter, "addEventListener", {
-		value: emitter.addListener,
+		get: () => emitter.addListener,
 	});
 	// Bind removeEventListener as alias for removeListener
 	Object.defineProperty(emitter, "removeEventListener", {
-		value: emitter.removeListener,
+		get: () => emitter.removeListener,
 	});
 	return emitter as GeneralEmmiterAdapted<T>;
+}
+
+function interceptEmitter<
+	E extends GeneralEmmiterAdapted<EventEmitter>,
+	K extends keyof E & string,
+	F extends E[K] & ((...args: any[]) => any)
+>(
+	emitter: E,
+	method: K,
+	intercept: (...args: Parameters<F>) => void,
+	after?: (...args: Parameters<F>) => void
+): void {
+	debug(`Intercepting method ${method} in ${emitter.constructor.name}`);
+	const original = emitter[method] as F;
+	emitter[method] = function (this: E, ...args: Parameters<F>): ReturnType<F> {
+		intercept.apply(this, args);
+		const result = original.apply(this, args);
+		if (after) after.apply(this, args);
+		return result;
+	} as E[K];
 }
 
 
 export default async function (appCtx: ApplicationContext) {
 	debug("Loading modules");
 	const fsdirs = fs.readdirSync(`${getRootPath()}/modules`);
-	// Stat .ud_mod_disabled file
-	const disabled = fs.statSync(`${getProcessPath()}/.ud_mod_disabled`);
-	if (disabled.isFile()) {
+	// Stat .sd_mod_disabled file
+	const disabledExists = fs.existsSync(`${getProcessPath()}/.sd_mod_disabled`);
+	if (disabledExists) {
 		// Disable modules contained in the file
-		const disabledModules = fs.readFileSync(`${getProcessPath()}/.ud_mod_disabled`, "utf-8").split("\n");
+		const disabledModules = fs.readFileSync(`${getProcessPath()}/.sd_mod_disabled`, "utf-8").split("\n");
 		for (const disabledModule of disabledModules) {
 			if (fsdirs.includes(disabledModule)) {
 				fsdirs.splice(fsdirs.indexOf(disabledModule), 1);
@@ -51,17 +73,26 @@ export default async function (appCtx: ApplicationContext) {
 				debug("Invalid Module", def);
 				throw new Error(`Module ${fsdir} is invalid`);
 			}
-			const config = getConfigProperty(`modules.${fsdir}`) as XModuleConfigs[ModuleCfgKey]
-			const moduleLoaded = await def.loadFunction(config!); // Not actually NON-null but typescript is dumb
+			const config = getConfigProperty(`modules.${fsdir}`) as XModuleConfigs[NModuleCfgKey]
+			const moduleLoaded = await def.create(config!); // Not actually NON-null but typescript is dumb
 			debug(`Loaded module context for ${fsdir}`);
 			appCtx.modman.modules.set(fsdir, {
 				module: def,
+				absolutePath: path.resolve(`${getRootPath()}/modules/${fsdir}`),
 				ctx: moduleLoaded,
 			});
 
-			// Relay all events from the module to the main event bus
-			appCtx.events.listenTo(adaptEmitter(moduleLoaded), {
-				"*": `modules:${fsdir}:*`,
+			const moduleEmitterAdapted = adaptEmitter(getModule(fsdir as keyof ModuleConfigs)!)
+
+			// Intercept any addition of listeners to the module context and relay them to the main event bus
+			interceptEmitter(moduleEmitterAdapted, "on", (event, listener) => {
+				appCtx.events.listenTo(moduleEmitterAdapted, {
+					[event]: `modules:${fsdir}:${event}`
+				})
+			});
+			// Intercept any removal of listeners to the module context and relay them to the main event bus
+			interceptEmitter(moduleEmitterAdapted, "off", (event, listener) => {
+				appCtx.events.stopListeningTo(moduleEmitterAdapted, event)
 			});
 
 			// Load hooks if present

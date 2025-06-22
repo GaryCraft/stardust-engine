@@ -112,7 +112,7 @@ export const getModulePath = (module: string) => {
  * @returns {string} The absolute path of the temp directory
  */
 export const getTempPath = () => {
-	return path.join(getProcessPath(), '/temp');
+	return path.join(getProcessPath(), '/.stardust');
 }
 
 // Execution 

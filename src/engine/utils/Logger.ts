@@ -1,6 +1,8 @@
 import winston, { format } from "winston";
 import chalk from "chalk";
 import { InherentConfig } from "./Env";
+import { getTempPath } from "./Runtime";
+import path from "path";
 
 const logTypes = {
 	error: "error",
@@ -35,7 +37,7 @@ const getColor = (type: LogType) => {
 	}
 };
 function getLoggingPath() {
-	return `temp/logs`;
+	return path.join(getTempPath(), "logs");
 }
 const moduleRegex = /(src|dist)\/(.*)(\.ts|\.js)/g;
 
@@ -52,7 +54,7 @@ function getLogDate() {
 	const date = new Date();
 	return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
-const utilitydustformat = format.printf(({ level, message, ...meta }) => {
+const stardustformat = format.printf(({ level, message, ...meta }) => {
 	const color = getColor(level as LogType);
 	const timestamp = new Date().toISOString();
 	const metaError = meta.error ? (meta.error as Error) : undefined;
@@ -63,7 +65,7 @@ const utilitydustformat = format.printf(({ level, message, ...meta }) => {
 const logger = winston.createLogger({
 	level: InherentConfig.node_env === "development" ? "debug" : "info",
 	levels: getLogTypesAsLevels(),
-	format: utilitydustformat,
+	format: stardustformat,
 	transports: [
 		new winston.transports.Console(),
 		new winston.transports.File({ filename: `${getLoggingPath()}/${getLogDate()}.log`, level: "debug" })
