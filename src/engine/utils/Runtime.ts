@@ -159,8 +159,17 @@ export const getTempPath = () => {
 	return path.join(getAppRootPath(), '/.stardust');
 }
 
-// Execution helpers removed (previously deprecated):
-// - isWindows
-// - hasBash
-// - spawnBash
+/**
+ * Returns a Set of disabled module names from the .sd_mod_disabled file
+ * @returns {Set<string>} Set of disabled module names
+ */
+export const getDisabledModules = (): Set<string> => {
+	const disabledPath = path.join(getProcessPath(), ".sd_mod_disabled");
+	const disabledModules = new Set<string>();
+	if (fs.existsSync(disabledPath)) {
+		const content = fs.readFileSync(disabledPath, "utf-8");
+		content.split("\n").map(s => s.trim()).filter(Boolean).forEach(m => disabledModules.add(m));
+	}
+	return disabledModules;
+};
 

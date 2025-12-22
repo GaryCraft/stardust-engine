@@ -2,7 +2,7 @@ import fs from "fs";
 import Module, { getModule, NModuleCfgKey, XModuleConfigs } from "@src/engine/modules";
 import type { ApplicationContext } from "@src/engine/types/Engine";
 import { debug, info, warn } from "@src/engine/utils/Logger";
-import { getAppRootPath, getProcessPath } from "@src/engine/utils/Runtime";
+import { getAppRootPath, getProcessPath, getDisabledModules } from "@src/engine/utils/Runtime";
 import { objectSchemaFrom, validateObject } from "parzival";
 import { getConfigProperty } from "@src/engine/utils/Configuration";
 import { useImporterRecursive } from "@src/engine/utils/Importing";
@@ -45,12 +45,8 @@ export default async function (appCtx: ApplicationContext) {
 	debug("Loading modules");
 
 	// Check for disabled modules
-	const disabledPath = path.join(getProcessPath(), ".sd_mod_disabled");
-	const disabledModules = new Set<string>();
-	if (fs.existsSync(disabledPath)) {
-		const content = fs.readFileSync(disabledPath, "utf-8");
-		content.split("\n").map(s => s.trim()).filter(Boolean).forEach(m => disabledModules.add(m));
-	}
+	// Check for disabled modules
+	const disabledModules = getDisabledModules();
 
 	// Load engine-provided builtin modules
 	for (const entry of BuiltinModules) {

@@ -1,5 +1,5 @@
 import { objectSchemaFrom, validateObject } from "parzival";
-import { getProcessPath } from "@src/engine/utils/Runtime";
+import { getProcessPath, getDisabledModules } from "@src/engine/utils/Runtime";
 import DefGlobalConfig from "@src/config";
 import { Result } from "@src/engine/utils/ActualUtils";
 import { debug, error, warn } from "./Logger";
@@ -66,8 +66,19 @@ function redactConfig(obj: any, depth = 0, seen = new WeakSet()): any {
 }
 
 const loadConfig = (): Result<GlobalConfig, Error> => {
-	const path = getBaseConfigPath();
-	const configObject = require(`${path}`);
+	const pathVal = getBaseConfigPath();
+	const configObject = require(`${pathVal}`);
+
+	const disabledModules = getDisabledModules();
+	if (configObject.modules) {
+		for (const mod of disabledModules) {
+			if (configObject.modules[mod]) {
+				delete configObject.modules[mod];
+				debug(`Pruned configuration for disabled module: ${mod}`);
+			}
+		}
+	}
+
 	try { debug("Loaded configuration file.", redactConfig(configObject)); } catch { }
 	const schema = objectSchemaFrom(DefGlobalConfig);
 	const isValid = validateObject(configObject, schema);
