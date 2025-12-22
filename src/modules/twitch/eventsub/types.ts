@@ -7,17 +7,13 @@ const EVENTSUB_WEBHOOK_HEADERS = {
 	MESSAGE_SUBSCRIPTION_TYPE: "Twitch-Eventsub-Subscription-Type",
 	MESSAGE_SUBSCRIPTION_VERSION: "Twitch-Eventsub-Subscription-Version",
 } as const;
-
 const EVENTSUB_WEBHOOK_MESSAGE_TYPES = {
 	NOTIFICATION: "notification",
 	REVOCATION: "revocation",
 	CHALLENGE: "webhook_callback_verification",
 } as const;
-
 const EVENTSUB_WEBHOOK_MESSAGE_SIGNATURE_PREFIX = "sha256=";
-
 const EVENTSUB_SUBSCRIPTION_TYPES = {
-	// Automod
 	AUTOMOD_MESSAGE_HOLD: {
 		name: "automod.message.hold",
 	},
@@ -30,7 +26,6 @@ const EVENTSUB_SUBSCRIPTION_TYPES = {
 	AUTOMOD_TERMS_UPDATE: {
 		name: "automod.terms.update",
 	},
-	// Channel
 	CHANNEL_UPDATE: {
 		name: "channel.update",
 	},
@@ -104,16 +99,16 @@ const EVENTSUB_SUBSCRIPTION_TYPES = {
 		name: "channel.moderator.remove",
 	},
 	CHANNEL_GUEST_STAR_SESSION_BEGIN: {
-		name: "channel.guest_star_session.begin", // BETA
+		name: "channel.guest_star_session.begin",
 	},
 	CHANNEL_GUEST_STAR_SESSION_END: {
-		name: "channel.guest_star_session.end", // BETA
+		name: "channel.guest_star_session.end",
 	},
 	CHANNEL_GUEST_STAR_GUEST_UPDATE: {
-		name: "channel.guest_star_guest.update", // BETA
+		name: "channel.guest_star_guest.update",
 	},
 	CHANNEL_GUEST_STAR_SETTINGS_UPDATE: {
-		name: "channel.guest_star_settings.update", // BETA
+		name: "channel.guest_star_settings.update",
 	},
 	CHANNEL_POINTS_AUTOMATIC_REWARD_REDEMTION: {
 		name: "channel.channel_points_automatic_reward_redemption.add",
@@ -166,7 +161,6 @@ const EVENTSUB_SUBSCRIPTION_TYPES = {
 	CHANNEL_VIP_REMOVE: {
 		name: "channel.vip.remove",
 	},
-
 	GOAL_BEGIN: {
 		name: "channel.goal.begin",
 	},
@@ -197,7 +191,6 @@ const EVENTSUB_SUBSCRIPTION_TYPES = {
 	SHOUTOUT_RECEIVED: {
 		name: "channel.shoutout.receive",
 	},
-	// Charity
 	CHARITY_DONATION: {
 		name: "channel.charity_campaign.donate",
 	},
@@ -210,7 +203,6 @@ const EVENTSUB_SUBSCRIPTION_TYPES = {
 	CHARITY_CAMPAIGN_STOP: {
 		name: "channel.charity_campaign.stop",
 	},
-	// Other
 	CONDUIT_SHARD_DISABLED: {
 		name: "conduit.shard.disabled",
 	},
@@ -220,48 +212,37 @@ const EVENTSUB_SUBSCRIPTION_TYPES = {
 	EXTENSION_BITS_TRANSACTION_CREATE: {
 		name: "extension.bits_transaction.create",
 	},
-	// Stream
 	STREAM_OFFLINE: {
 		name: "stream.offline",
 	},
 	STREAM_ONLINE: {
 		name: "stream.online",
 	},
-	// Auth
 	USER_AUTH_GRANT: {
 		name: "user.authorization.grant",
 	},
 	USER_AUTH_REVOKE: {
 		name: "user.authorization.revoke",
 	},
-	// User
 	USER_UPDATE: {
 		name: "user.update",
 	},
 	USER_WHISPER_RECEIVED: {
 		name: "user.whisper.message",
 	},
-
 } as const;
-
 const EVENTSUB_SUBSCRIPTION_NAMES = Object.values(EVENTSUB_SUBSCRIPTION_TYPES).map((v) => v.name);
 type EventSubscriptionName = typeof EVENTSUB_SUBSCRIPTION_NAMES[number];
-
-interface BaseEventSubSubscriptionRequest<T extends EventSubscriptionName = EventSubscriptionName>{
+interface BaseEventSubSubscriptionRequest<T extends EventSubscriptionName = EventSubscriptionName> {
 	type: typeof EVENTSUB_SUBSCRIPTION_NAMES[number];
 	version: string;
-	condition: {
-
-	}
+	condition: {};
 	transport: {
 		methods: string[];
 		callback?: string;
 		secret?: string;
-	}
+	};
 	session_id?: string;
 	conduit_id?: string;
 }
-
-// TODO: Implement the rest of the types, this is just a start
-
 type EventSubSubscriptionRequest = BaseEventSubSubscriptionRequest & BaseEventSubSubscriptionRequest['type'] extends EventSubscriptionName ? BaseEventSubSubscriptionRequest['type'] : never;

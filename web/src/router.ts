@@ -5,12 +5,12 @@ const routes = [
 	{
 		path: '/',
 		component: Index,
-		name: 'Index'
+		name: 'Application'
 	},
 	{
 		path: '/stardust',
 		component: () => import('@/pages/stardust.vue'),
-		name: 'stardust'
+		name: 'Dashboard'
 	},
 ]
 

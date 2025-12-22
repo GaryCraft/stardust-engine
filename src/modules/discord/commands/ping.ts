@@ -1,5 +1,4 @@
 import { DSCommand } from "../extendedclient";
-
 export default {
 	name: "ping",
 	description: "Ping!",

@@ -1,7 +1,6 @@
 import type { ApplicationContext } from "../types/Engine";
 import { info } from "../utils/Logger";
-
-export default async function(appCtx: ApplicationContext) {
+export default async function (appCtx: ApplicationContext) {
 	info("Stopping Application");
 	await appCtx.events.emitAsync("http:terminate");
 	await appCtx.events.emitAsync("database:disconnect");

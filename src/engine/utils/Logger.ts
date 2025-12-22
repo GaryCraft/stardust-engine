@@ -1,8 +1,8 @@
 import winston, { format } from "winston";
 import chalk from "chalk";
-import { InherentConfig } from "./Env";
 import { getTempPath } from "./Runtime";
 import path from "path";
+import fs from "fs";
 
 const logTypes = {
 	error: "error",
@@ -39,20 +39,28 @@ const getColor = (type: LogType) => {
 function getLoggingPath() {
 	return path.join(getTempPath(), "logs");
 }
-const moduleRegex = /(src|dist)\/(.*)(\.ts|\.js)/g;
+const moduleRegex = /(src)[\/\\](.*?)(\.ts|\.js)/g;
 
 export function getCurrentModule(stack: string) {
-	const lines = stack.split("\n");
-	const filtered = lines.filter((line) => {
-		return line.match(moduleRegex);
-	});
-	const matches = filtered[2]?.match(moduleRegex) || filtered[0]?.match(moduleRegex);
-	const cont = matches ? matches[0] : "unknown";
-	return cont.slice(0, -3).slice(4);
+	try {
+		const lines = stack.split("\n");
+		const hits = lines
+			.map((line) => line.match(moduleRegex))
+			.filter(Boolean) as RegExpMatchArray[];
+		const match = (hits[hits.length - 1] || hits[0])?.[0];
+		if (!match) return "unknown";
+		const idx = match.indexOf("src/");
+		const sub = idx >= 0 ? match.slice(idx + 4) : match;
+		return sub.replace(/\.(ts|js)$/i, "");
+	} catch {
+		return "unknown";
+	}
 }
 function getLogDate() {
 	const date = new Date();
-	return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+	const mm = String(date.getMonth() + 1).padStart(2, "0");
+	const dd = String(date.getDate()).padStart(2, "0");
+	return `${date.getFullYear()}-${mm}-${dd}`;
 }
 const stardustformat = format.printf(({ level, message, ...meta }) => {
 	const color = getColor(level as LogType);
@@ -62,8 +70,10 @@ const stardustformat = format.printf(({ level, message, ...meta }) => {
 	return `[${chalk.underline(timestamp)}](${chalk.magenta(callermodule)}) ${level}: ${color(message)}`;
 });
 
+try { fs.mkdirSync(getLoggingPath(), { recursive: true }); } catch { }
+
 const logger = winston.createLogger({
-	level: InherentConfig.node_env === "development" ? "debug" : "info",
+	level: "debug",
 	levels: getLogTypesAsLevels(),
 	format: stardustformat,
 	transports: [
@@ -91,10 +101,8 @@ function streamlineArgs(args: unknown[]) {
 }
 
 export default function log(level: LogType, message: string, ...args: any[]) {
-	// This function takes the import context and uses it to determine the calling module
-	// This is used to determine the module name for the log
 	const stack = new Error().stack || "";
-	if(level === "clear") {
+	if (level === "clear") {
 		const mod = getCurrentModule(stack);
 		console.log(chalk.white(`[${mod}] ${message}`));
 		return;

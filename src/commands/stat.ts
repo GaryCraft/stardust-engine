@@ -1,7 +1,6 @@
 import type { ApplicationContext } from "@src/engine/types/Engine";
 import { CliCommand } from "@src/engine/types/Executors";
 import { clear } from "@src/engine/utils/Logger";
-
 export default {
 	name: "stat",
 	description: "Displays Values about the application",
@@ -9,7 +8,6 @@ export default {
 	execute: async (app: ApplicationContext, args: string[]) => {
 		const uptime = process.uptime();
 		const memoryUsage = process.memoryUsage();
-
 		let sub;
 		sub = args[0];
 		switch (sub) {
@@ -22,7 +20,7 @@ export default {
 				break;
 			}
 			case "commands": {
-				const cmdSize = app.cli.commands.size
+				const cmdSize = app.cli.commands.size;
 				const table = [];
 				table.push(`${cmdSize} commands loaded`);
 				for (const [cmd, command] of app.cli.commands) {
@@ -32,16 +30,18 @@ export default {
 				break;
 			}
 			case "routes": {
-				let routesSize = 0
-				let middlewareSize = 0
+				let routesSize = 0;
+				let middlewareSize = 0;
 				const table = [];
 				for (const layer of app.http.server._router.stack) {
-					if(!layer.route) continue;
+					if (!layer.route)
+						continue;
 					routesSize++;
 					table.push(`${layer.route.path}`);
 				}
 				for (const layer of app.http.server._router.stack) {
-					if(layer.route) continue;
+					if (layer.route)
+						continue;
 					middlewareSize++;
 					table.push(`${layer.name} at ${layer.regexp.toString()}`);
 				}
@@ -74,19 +74,18 @@ export default {
 				const tasksSize = app.tasks.jobs.size;
 				const table = [];
 				table.push(`${tasksSize} tasks loaded`);
-				for (const [name,t] of app.tasks.jobs) {
+				for (const [name, t] of app.tasks.jobs) {
 					table.push(`${name} at ${t.cronInterval}`);
 				}
 				clear(table.join("\n"));
 				break;
 			}
-
 			default: {
 				const table = [
 					`Uptime: ${uptime} seconds`,
 					`Memory Usage: ${memoryUsage.rss} bytes`
 				];
-				const cmdSize = app.cli.commands.size
+				const cmdSize = app.cli.commands.size;
 				const routesSize = app.http.server._router.length;
 				const modulesSize = app.modman.modules.size;
 				const hooksSize = app.events.eventNames().length;

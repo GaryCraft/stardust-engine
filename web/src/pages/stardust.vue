@@ -5,6 +5,7 @@ import "@baklavajs/themes/dist/classic.css";
 import { onBeforeUnmount, onMounted } from "vue";
 import Nodes from "@/lib/graph-engine/defaultNodes";
 import { type IEditorState } from "baklavajs";
+import NavBar from "@/components/NavBar.vue";
 
 const baklava = useBaklava();
 
@@ -36,6 +37,7 @@ onBeforeUnmount(() => {
 </script>
 <template>
 	<div class="w-full h-[100vh]">
+		<NavBar/>
 		<BaklavaEditor :view-model="baklava" />
 	</div>
 </template>

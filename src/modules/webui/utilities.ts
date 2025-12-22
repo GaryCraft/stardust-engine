@@ -8,31 +8,26 @@ export async function buildWebUI(from: string, to: string) {
 	const fromPath = from;
 	const toPath = to;
 
-	// remove the to path
 	await fs.remove(toPath);
-	// create the to path
 	await fs.mkdir(toPath, { recursive: true });
 
-	// run npm install
 	let errored = false;
-	await spawnChild("npm install --include dev", { cwd: fromPath }).catch((e) => {
+	await spawnChild("bun install", { cwd: fromPath }).catch((e) => {
 		error("Failed to install dependencies for webui", e);
 		errored = true;
 	}).then((result) => {
-		debug("npm install result", result);
+		debug("bun install result", result);
 	});
 	if (errored) return false;
 
-	// run npm run build
-	await spawnChild("npm run build", { cwd: fromPath }).catch((e) => {
+	await spawnChild("bun run build", { cwd: fromPath }).catch((e) => {
 		error("Failed to build webui", e);
 		errored = true;
 	}).then((result) => {
-		debug("npm run build result", result);
+		debug("bun run build result", result);
 	});
 	if (errored) return false;
 
-	// copy the build to the to path
 	await fs.copy(fromPath + "/dist", toPath, {
 		overwrite: true,
 	}).catch((e) => {
@@ -46,9 +41,8 @@ export async function buildWebUI(from: string, to: string) {
 
 export async function devWebUI(from: string, port: number) {
 	const fromPath = from;
-	// Start vite in dev mode
 	let errored = false;
-	await spawnChild(`npm run dev -- --port ${port} --host`, { cwd: fromPath }).catch((e) => {
+	await spawnChild(`bun run dev -- --port ${port} --host`, { cwd: fromPath }).catch((e) => {
 		error("Failed to start vite in dev mode", e);
 		errored = true;
 		return e;
@@ -60,7 +54,7 @@ export async function devWebUI(from: string, port: number) {
 export function listenSSR(http: Application, render: any, template: string, ssrManifest: any) {
 	http.use('*', async (req, res) => {
 		try {
-			console.log(req.originalUrl)
+			debug(`SSR request: ${req.originalUrl}`)
 			const url = req.originalUrl.replace("/", '')
 			const { stream } = render(url, ssrManifest, 'utf-8')
 

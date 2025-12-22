@@ -2,13 +2,20 @@ import type { ApplicationContext } from "@src/engine/types/Engine";
 import { CliCommand } from "@src/engine/types/Executors";
 import { useImporterRecursive } from "@src/engine/utils/Importing";
 import { debug, info, warn } from "@src/engine/utils/Logger";
-import { getRootPath } from "@src/engine/utils/Runtime";
+import { getAppRootPath } from "@src/engine/utils/Runtime";
 import { objectSchemaFrom, validateObject } from "parzival";
+import fs from "fs";
+import { declareTypings } from "@src/engine/utils/TypingsGen";
 
 export default async function (appCtx: ApplicationContext) {
 	const validationSchema = objectSchemaFrom(CliCommand);
 	debug("Loading commands...");
-	await useImporterRecursive(`${getRootPath()}/commands`,
+	const commandsDir = `${getAppRootPath()}/commands`;
+	if (!fs.existsSync(commandsDir)) {
+		info(`No app commands directory found at ${commandsDir}, skipping.`);
+		return;
+	}
+	await useImporterRecursive(commandsDir,
 		function validator(commandFile: any, file, dir): commandFile is CliCommand {
 			if (!commandFile) {
 				warn(`Command ${file} from ${dir} has no default export`);
@@ -23,7 +30,9 @@ export default async function (appCtx: ApplicationContext) {
 		function loader(commandModule, file, dir) {
 			const command = commandModule;
 			appCtx.cli.commands.set(command.name, command);
+			appCtx.cli.loadedFromApp.add(command.name);
 			debug(`Loaded command ${command.name}`);
 		});
 	info("Finished loading commands");
+	try { await declareTypings(); } catch { }
 }

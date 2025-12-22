@@ -2,7 +2,6 @@ import { Parseable, ValidateProperty } from "parzival";
 import type { Response, Request } from "express";
 import type { ApplicationContext } from "./Engine";
 import SocketIO from "socket.io";
-
 @Parseable()
 export class CliCommand {
 	@ValidateProperty({
@@ -26,7 +25,6 @@ export class CliCommand {
 		throw new Error("Method not implemented.");
 	}
 }
-
 @Parseable()
 export class ScheduledTask {
 	@ValidateProperty({
@@ -47,8 +45,6 @@ export class ScheduledTask {
 		throw new Error("Method not implemented.");
 	}
 }
-
-
 @Parseable()
 export class HTTPRouteHandler {
 	@ValidateProperty({
@@ -97,7 +93,6 @@ export class HTTPRouteHandler {
 		throw new Error("Method not implemented.");
 	}
 }
-
 @Parseable()
 export class HTTPMiddleware {
 	@ValidateProperty({
@@ -109,7 +104,6 @@ export class HTTPMiddleware {
 		throw new Error("Method not implemented.");
 	}
 }
-
 class WSHandlerSettings {
 	@ValidateProperty({
 		type: "string",
@@ -126,9 +120,8 @@ export class WSHandler {
 		optional: true
 	})
 	settings?: WSHandlerSettings;
-	// TODO: Select handling strategy
 }
-
-export interface HookExecutor {
-	(ctx: ApplicationContext): Promise<void>;
-}
+export type HookExecutor<Context = ApplicationContext, Args extends unknown[] = unknown[]> = (
+	ctx: Context,
+	...args: Args
+) => unknown | Promise<unknown>;

@@ -2,7 +2,6 @@ import Module from "@src/engine/modules";
 import { getConfigValue } from "@src/engine/utils/Configuration";
 import { GatewayIntentBits } from "discord.js";
 import ExtendedClient from "./extendedclient";
-
 const nonPrivilegedIntents = [
 	GatewayIntentBits.Guilds,
 	GatewayIntentBits.GuildMembers,
@@ -24,7 +23,6 @@ const nonPrivilegedIntents = [
 const privilegedIntents = [
 	GatewayIntentBits.MessageContent
 ];
-
 export default {
 	name: "discord",
 	paths: {

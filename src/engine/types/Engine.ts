@@ -5,7 +5,6 @@ import { GlobalConfig } from "../utils/Configuration";
 import { DataSource } from "typeorm";
 import TaskManager from "../tasks";
 import { ModuleManager } from "../modules";
-
 export type ApplicationContext = {
 	readonly events: EventEmitter2;
 	readonly http: HttpHandler;
@@ -14,4 +13,4 @@ export type ApplicationContext = {
 	readonly database: DataSource;
 	readonly tasks: TaskManager;
 	readonly modman: ModuleManager;
-}
+};

@@ -1,6 +1,5 @@
 import { HandlerFunction } from "@garycraft/orizuru";
 import type { ApplicationContext } from "@src/engine/types/Engine";
-
 const fn: HandlerFunction<ApplicationContext, "Auth"> = async (context, req) => {
 	return {
 		success: true,
@@ -13,6 +12,5 @@ const fn: HandlerFunction<ApplicationContext, "Auth"> = async (context, req) => 
 		},
 		code: 200
 	};
-}
-
+};
 export default fn;

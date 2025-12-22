@@ -2,7 +2,6 @@ import type { ApplicationContext } from "@src/engine/types/Engine";
 import { CliCommand } from "@src/engine/types/Executors";
 import { getConfig } from "@src/engine/utils/Configuration";
 import { error, debug, warn } from "@src/engine/utils/Logger";
-
 export default {
 	name: "eval",
 	description: "Evaluate some code in the context of the application",
@@ -15,10 +14,9 @@ export default {
 		const code = args.join(" ");
 		debug("Evaling: ", code);
 		try {
-			const context ={
+			const context = {
 				app
 			};
-			// Eval the code passing in the context
 			const res = eval(code);
 			debug("Result: ", res);
 		}
@@ -26,5 +24,4 @@ export default {
 			error("Error: ", err);
 		}
 	}
-
 } satisfies CliCommand;

@@ -1,7 +1,6 @@
 import type { ApplicationContext } from "@src/engine/types/Engine";
 import { CliCommand } from "@src/engine/types/Executors";
 import { clear } from "@src/engine/utils/Logger";
-
 export default {
 	name: "help",
 	description: "Displays help information",
@@ -15,5 +14,4 @@ export default {
 		}
 		clear(table.join("\n"));
 	}
-
 } satisfies CliCommand;
