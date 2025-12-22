@@ -1,0 +1,20 @@
+services:
+  stardust-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: stardust-engine:latest
+    ports:
+      - "5001:5001"
+    environment:
+      SD_CONFIG_PATH: /app/config
+      SD_ENV: production
+      SD_ALLOW_INSECURE_CONFIG: "false"
+    volumes:
+      - ./config:/app/config
+      - ./modules:/app/modules
+      - ./user:/app/user
+      - ./public:/app/public
+      - ./lang:/app/lang
+      - ./.stardust:/app/.stardust
+    restart: unless-stopped
