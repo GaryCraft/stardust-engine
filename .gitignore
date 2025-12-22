@@ -5,3 +5,5 @@ config/**
 public/**
 web/node_modules
 .stardust
+local
+user
