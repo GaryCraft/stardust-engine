@@ -2,7 +2,7 @@ import fs from "fs";
 import Module, { getModule, NModuleCfgKey, XModuleConfigs } from "@src/engine/modules";
 import type { ApplicationContext } from "@src/engine/types/Engine";
 import { debug, info, warn } from "@src/engine/utils/Logger";
-import { getProcessPath, getRootPath, isRunningAsCompiled } from "@src/engine/utils/Runtime";
+import { getAppRootPath, getProcessPath } from "@src/engine/utils/Runtime";
 import { objectSchemaFrom, validateObject } from "parzival";
 import { getConfigProperty } from "@src/engine/utils/Configuration";
 import { useImporterRecursive } from "@src/engine/utils/Importing";
@@ -12,198 +12,190 @@ import type { GeneralEventEmitter } from "eventemitter2";
 import ModuleConfigs from "@src/config/modules";
 import path from "path";
 import { declareTypings } from "@src/engine/utils/TypingsGen";
+import { BuiltinModules } from "@src/engine/modules/builtin";
 
 type GeneralEmmiterAdapted<T extends EventEmitter> = T & GeneralEventEmitter;
 
 const adaptEmitter = <T extends EventEmitter>(emitter: T): GeneralEmmiterAdapted<T> => {
-	// Bind addEventListener as alias for addListener
 	Object.defineProperty(emitter, "addEventListener", {
 		get: () => emitter.addListener,
 	});
-	// Bind removeEventListener as alias for removeListener
 	Object.defineProperty(emitter, "removeEventListener", {
 		get: () => emitter.removeListener,
 	});
 	return emitter as GeneralEmmiterAdapted<T>;
-}
+};
 
-function interceptEmitter<
-	E extends GeneralEmmiterAdapted<EventEmitter>,
-	K extends keyof E & string,
-	F extends E[K] & ((...args: any[]) => any)
->(
-	emitter: E,
-	method: K,
-	intercept: (...args: Parameters<F>) => void,
-	after?: (...args: Parameters<F>) => void
-): void {
-	debug(`Intercepting method ${method} in ${emitter.constructor.name}`);
-	const original = emitter[method] as F;
-	emitter[method] = function (this: E, ...args: Parameters<F>): ReturnType<F> {
-		intercept.apply(this, args);
-		const result = original.apply(this, args);
-		if (after) after.apply(this, args);
-		return result;
-	} as E[K];
-}
+const forwardModuleEvents = (appCtx: ApplicationContext, emitter: GeneralEmmiterAdapted<EventEmitter>, moduleName: string) => {
+	const originalEmit = emitter.emit.bind(emitter);
+	const wrappedEmit: typeof emitter.emit = function (event, ...args) {
+		if (typeof event === "string" || typeof event === "symbol") {
+			const namespacedEvent = `modules:${moduleName}:${String(event)}`;
+			try {
+				appCtx.events.emit(namespacedEvent, ...args);
+			} catch { }
+		}
+		return originalEmit(event, ...args);
+	};
+	Object.defineProperty(emitter, "emit", { value: wrappedEmit });
+};
 
 
 export default async function (appCtx: ApplicationContext) {
 	debug("Loading modules");
-	const fsdirs = fs.readdirSync(`${getRootPath()}/modules`);
-	// Stat .sd_mod_disabled file
-	const disabledExists = fs.existsSync(`${getProcessPath()}/.sd_mod_disabled`);
-	if (disabledExists) {
-		// Disable modules contained in the file
-		const disabledModules = fs.readFileSync(`${getProcessPath()}/.sd_mod_disabled`, "utf-8").split("\n");
-		for (const disabledModule of disabledModules) {
-			if (fsdirs.includes(disabledModule)) {
-				fsdirs.splice(fsdirs.indexOf(disabledModule), 1);
-				warn(`Disabled module ${disabledModule}`);
-			}
-		}
+
+	// Check for disabled modules
+	const disabledPath = path.join(getProcessPath(), ".sd_mod_disabled");
+	const disabledModules = new Set<string>();
+	if (fs.existsSync(disabledPath)) {
+		const content = fs.readFileSync(disabledPath, "utf-8");
+		content.split("\n").map(s => s.trim()).filter(Boolean).forEach(m => disabledModules.add(m));
 	}
-	const moduleSchema = objectSchemaFrom(Module);
-	for (const fsdir of fsdirs) {
-		if (fs.statSync(`${getRootPath()}/modules/${fsdir}`).isDirectory()) {
-			debug(`Loading module ${fsdir}`);
-			const module = (await import(`${getRootPath()}/modules/${fsdir}/index${isRunningAsCompiled() ? ".js" : ".ts"}`)).default;
-			const def = module;
-			if (!validateObject<Module<EventEmitter, keyof ModuleConfigs>>(def, moduleSchema)) {
-				debug("Invalid Module", def);
-				throw new Error(`Module ${fsdir} is invalid`);
-			}
-			const config = getConfigProperty(`modules.${fsdir}`) as XModuleConfigs[NModuleCfgKey]
-			const moduleLoaded = await def.create(config!); // Not actually NON-null but typescript is dumb
-			debug(`Loaded module context for ${fsdir}`);
-			appCtx.modman.modules.set(fsdir, {
+
+	// Load engine-provided builtin modules
+	for (const entry of BuiltinModules) {
+		if (appCtx.modman.modules.has(entry.name)) continue;
+		if (disabledModules.has(entry.name)) {
+			warn(`Module ${entry.name} is disabled via .sd_mod_disabled`);
+			continue;
+		}
+
+		try {
+			const def = entry.def as Module<any, any>;
+			const config = getConfigProperty(`modules.${entry.name}`) as XModuleConfigs[NModuleCfgKey];
+			const moduleLoaded = await def.create(config!);
+			debug(`Loaded builtin module context for ${entry.name}`);
+			appCtx.modman.modules.set(entry.name, {
 				module: def,
-				absolutePath: path.resolve(`${getRootPath()}/modules/${fsdir}`),
+				absolutePath: entry.absSpecifier,
 				ctx: moduleLoaded,
 			});
 
-			const moduleEmitterAdapted = adaptEmitter(getModule(fsdir as keyof ModuleConfigs)!)
+			const moduleEmitterAdapted = adaptEmitter(getModule(entry.name as keyof ModuleConfigs)!);
+			forwardModuleEvents(appCtx, moduleEmitterAdapted, entry.name);
 
-			// Intercept any addition of listeners to the module context and relay them to the main event bus
-			interceptEmitter(moduleEmitterAdapted, "on", (event, listener) => {
-				appCtx.events.listenTo(moduleEmitterAdapted, {
-					[event]: `modules:${fsdir}:${event}`
-				})
-			});
-			// Intercept any removal of listeners to the module context and relay them to the main event bus
-			interceptEmitter(moduleEmitterAdapted, "off", (event, listener) => {
-				appCtx.events.stopListeningTo(moduleEmitterAdapted, event)
-			});
-
-			// Load hooks if present
-			if (def.paths?.hooks) {
-				debug(`Loading Module Hooks for ${fsdir}`);
-				await useImporterRecursive(`${getRootPath()}/modules/${fsdir}/${def.paths?.hooks ?? "hooks"}`,
-					function validator(hookModule: any, file, dir): hookModule is HookExecutor {
-						if (!hookModule) {
-							warn(`Hook ${file} from ${dir} has no default export`);
-							return false;
+			// Try to load builtin module assets from source tree when available (dev/uncompiled)
+			try {
+				if (def.paths?.hooks) {
+					debug(`Loading Builtin Module Hooks for ${entry.name}`);
+					if (entry.assets?.hooks && entry.assets.hooks.length) {
+						for (const spec of entry.assets.hooks) {
+							const hookModule = (await import(spec)).default as HookExecutor | undefined;
+							if (!hookModule || typeof hookModule !== "function") continue;
+							const file = spec.split("/").pop() || "";
+							const hookName = file.slice(0, -3).replaceAll(".", ":");
+							const namespacedName = `modules:${entry.name}:${hookName}`;
+							debug(`Binding builtin hook ${namespacedName}`);
+							const listener: (...args: unknown[]) => Promise<unknown> | unknown = (...args) => hookModule(moduleLoaded, ...args);
+							appCtx.events.on(namespacedName, listener);
 						}
-						if (typeof hookModule !== "function") {
-							warn(`Hook ${file} from ${dir} is invalid`);
-							return false;
-						}
-						return true;
-					},
-					function loader(hookModule, file, dir) {
-						const hookName = file.slice(0, -3).replaceAll(".", ":");
-						const namespacedName = `modules:${fsdir}:${hookName}`;
-						debug(`Binding hook ${namespacedName}`);
-						appCtx.events.on(
-							namespacedName,
-							// @ts-ignore
-							hookModule.bind(null, moduleLoaded)
+					} else {
+						await useImporterRecursive(path.join(entry.baseDir, def.paths?.hooks ?? "hooks"),
+							function validator(hookModule: unknown, file, dir): hookModule is HookExecutor { return !!hookModule && typeof hookModule === "function"; },
+							function loader(hookModule, file) {
+								const hookName = file.slice(0, -3).replaceAll(".", ":");
+								const namespacedName = `modules:${entry.name}:${hookName}`;
+								debug(`Binding builtin hook ${namespacedName}`);
+								const listener: (...args: unknown[]) => Promise<unknown> | unknown = (...args) => hookModule(moduleLoaded, ...args);
+								appCtx.events.on(namespacedName, listener);
+							}
 						);
-						debug(`Propagating hook ${namespacedName}`);
-						appCtx.events.listenTo(appCtx.modman.modules.get(fsdir)!.ctx, {
-							[hookName]: namespacedName,
-						});
 					}
-				);
-			}
-			// Load commands if present
-			if (def.paths?.commands) {
-				debug(`Loading Module Commands for ${fsdir}`);
-				const validationSchema = objectSchemaFrom(CliCommand);
-				await useImporterRecursive(`${getRootPath()}/modules/${fsdir}/${def.paths?.commands ?? "commands"}`,
-					function validator(commandFile: any, file, dir): commandFile is CliCommand {
-						if (!commandFile) {
-							warn(`Command ${file} from ${dir} has no default export`);
-							return false;
+				}
+				if (def.paths?.commands) {
+					debug(`Loading Builtin Module Commands for ${entry.name}`);
+					const validationSchema = objectSchemaFrom(CliCommand);
+					if (entry.assets?.commands && entry.assets.commands.length) {
+						for (const spec of entry.assets.commands) {
+							const commandModule = (await import(spec)).default as CliCommand | undefined;
+							if (!commandModule || !validateObject(commandModule, validationSchema)) continue;
+							const namespacedName = `${entry.name}-${commandModule.name}`;
+							appCtx.cli.commands.set(namespacedName, commandModule);
+							appCtx.cli.loadedFromModules.add(namespacedName);
+							debug(`Loaded builtin command ${namespacedName}`);
 						}
-						if (!validateObject(commandFile, validationSchema)) {
-							warn(`Command ${file} from ${dir} is invalid`);
-							return false;
-						}
-						return true;
-					},
-					function loader(commandModule, file, dir) {
-						const command = commandModule;
-						const namespacedName = `${fsdir}-${command.name}`;
-						appCtx.cli.commands.set(namespacedName, command);
-						debug(`Loaded command ${namespacedName}`);
+					} else {
+						await useImporterRecursive(path.join(entry.baseDir, def.paths?.commands ?? "commands"),
+							function validator(commandFile: any, file, dir): commandFile is CliCommand { return !!commandFile && validateObject(commandFile, validationSchema); },
+							function loader(commandModule, file, dir) {
+								const namespacedName = `${entry.name}-${commandModule.name}`;
+								appCtx.cli.commands.set(namespacedName, commandModule);
+								appCtx.cli.loadedFromModules.add(namespacedName);
+								debug(`Loaded builtin command ${namespacedName}`);
+							}
+						);
 					}
-				);
-			}
-			// Load http routes if present
-			if (def.paths?.routes) {
-				debug(`Loading Module Routes for ${fsdir}`);
-				const validationSchema = objectSchemaFrom(HTTPRouteHandler);
-				await useImporterRecursive(`${getRootPath()}/modules/${fsdir}/${def.paths?.routes ?? "routes"}`,
-					function validator(routeFile: any, file, dir): routeFile is HTTPRouteHandler {
-						if (!routeFile) {
-							warn(`Route ${file} from ${dir} has no default export`);
-							return false;
+				}
+				if (def.paths?.routes) {
+					debug(`Loading Builtin Module Routes for ${entry.name}`);
+					const validationSchema = objectSchemaFrom(HTTPRouteHandler);
+					if (entry.assets?.routes && entry.assets.routes.length) {
+						for (const spec of entry.assets.routes) {
+							const routeModule = (await import(spec)).default as HTTPRouteHandler | undefined;
+							if (!routeModule || !validateObject(routeModule, validationSchema)) continue;
+							// For static specifiers we can't infer parsedRoute reliably; skip registration path calc
+							// Expect specifiers array to mirror route tree if used.
+							const file = spec.split("/").pop() || "";
+							const base = def.paths?.routes ?? "routes";
+							const parsedRoute = `/${file.split(".")[0]}`.replace(/\$/g, ":");
+							const IRoute = appCtx.http.server.route(parsedRoute);
+							appCtx.http.registeredModuleRoutes.get(entry.name)?.add(parsedRoute) || appCtx.http.registeredModuleRoutes.set(entry.name, new Set([parsedRoute]));
+							if (routeModule.get) IRoute.get(routeModule.get);
+							if (routeModule.post) IRoute.post(routeModule.post);
+							if (routeModule.put) IRoute.put(routeModule.put);
+							if (routeModule.delete) IRoute.delete(routeModule.delete);
+							if (routeModule.patch) IRoute.options(routeModule.patch);
 						}
-						if (!validateObject(routeFile, validationSchema)) {
-							warn(`Route ${file} from ${dir} is invalid`);
-							return false;
-						}
-						return true;
-					},
-					function loader(routeModule, file, dir) {
-						const parsedRoute = `${dir.replace(getRootPath() + `/modules/${fsdir}/${def.paths?.routes ?? "routes"}`, "")}/${file.split(".")[0]}`.replace(/\$/g, ":");
-						const namespacedName = `${parsedRoute}`;
-						debug(`Registering route ${file} as ${parsedRoute}`);
-						const IRoute = appCtx.http.server.route(parsedRoute);
-						const route = routeModule;
-						if (route.get) IRoute.get(route.get);
-						if (route.post) IRoute.post(route.post);
-						if (route.put) IRoute.put(route.put);
-						if (route.delete) IRoute.delete(route.delete);
-						if (route.patch) IRoute.options(route.patch);
+					} else {
+						await useImporterRecursive(path.join(entry.baseDir, def.paths?.routes ?? "routes"),
+							function validator(routeFile: any, file, dir): routeFile is HTTPRouteHandler { return !!routeFile && validateObject(routeFile, validationSchema); },
+							function loader(routeModule, file, dir) {
+								const parsedRoute = `${dir.replace(path.join(entry.baseDir, def.paths?.routes ?? "routes"), "")}/${file.split(".")[0]}`.replace(/\$/g, ":");
+								const IRoute = appCtx.http.server.route(parsedRoute);
+								appCtx.http.registeredModuleRoutes.get(entry.name)?.add(parsedRoute) || appCtx.http.registeredModuleRoutes.set(entry.name, new Set([parsedRoute]));
+								if (routeModule.get) IRoute.get(routeModule.get);
+								if (routeModule.post) IRoute.post(routeModule.post);
+								if (routeModule.put) IRoute.put(routeModule.put);
+								if (routeModule.delete) IRoute.delete(routeModule.delete);
+								if (routeModule.patch) IRoute.options(routeModule.patch);
+							}
+						);
 					}
-				);
-			}
-			// Load tasks if present
-			if (def.paths?.tasks) {
-				debug(`Loading Module Tasks for ${fsdir}`);
-				const validationSchema = objectSchemaFrom(ScheduledTask);
-				await useImporterRecursive(`${getRootPath()}/modules/${fsdir}/${def.paths?.tasks ?? "tasks"}`,
-					function validator(taskFile: any, file, dir): taskFile is ScheduledTask {
-						if (!taskFile) {
-							warn(`Task ${file} from ${dir} has no default export`);
-							return false;
+				}
+				if (def.paths?.tasks) {
+					debug(`Loading Builtin Module Tasks for ${entry.name}`);
+					const validationSchema = objectSchemaFrom(ScheduledTask);
+					if (entry.assets?.tasks && entry.assets.tasks.length) {
+						for (const spec of entry.assets.tasks) {
+							const taskMod = (await import(spec)).default as ScheduledTask | undefined;
+							if (!taskMod || !validateObject(taskMod, validationSchema)) continue;
+							appCtx.tasks.jobs.set(taskMod.name, taskMod);
+							const set = appCtx.tasks.moduleJobs.get(entry.name) || new Set<string>();
+							set.add(taskMod.name);
+							appCtx.tasks.moduleJobs.set(entry.name, set);
+							debug(`Loaded builtin task ${taskMod.name}`);
 						}
-						if (!validateObject(taskFile, validationSchema)) {
-							warn(`Task ${file} from ${dir} is invalid`);
-							return false;
-						}
-						return true;
-					},
-					function loader(taskMod, file, dir) {
-						const task = taskMod;
-						appCtx.tasks.jobs.set(task.name, task);
-						debug(`Loaded task ${task.name}`);
+					} else {
+						await useImporterRecursive(path.join(entry.baseDir, def.paths?.tasks ?? "tasks"),
+							function validator(taskFile: any, file, dir): taskFile is ScheduledTask { return !!taskFile && validateObject(taskFile, validationSchema); },
+							function loader(taskMod, file, dir) {
+								appCtx.tasks.jobs.set(taskMod.name, taskMod);
+								const set = appCtx.tasks.moduleJobs.get(entry.name) || new Set<string>();
+								set.add(taskMod.name);
+								appCtx.tasks.moduleJobs.set(entry.name, set);
+								debug(`Loaded builtin task ${taskMod.name}`);
+							}
+						);
 					}
-				);
-			}
+				}
+			} catch { }
+
+		} catch (e) {
+			warn(`Failed to load builtin module ${entry.name}`);
+			console.error(e);
 		}
 	}
+
 	info(`Loaded ${appCtx.modman.modules.size} modules`);
+	try { await declareTypings(); } catch { }
 }

@@ -6,7 +6,7 @@
 		"target": "ESNext",
 		"moduleResolution": "NodeNext",
 		"removeComments": true,
-		"outDir": "./dist",
+		"noEmit": true,
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"strict": true,
@@ -24,6 +24,9 @@
 	},
 	"include": [
 		"./src/**/*.ts",
+		"./.stardust/typings/**/*.d.ts",
+		"./typings/**/*.d.ts",
+		"./modules/**/*.ts"
 	],
 	"exclude": [
 		"./web/**",

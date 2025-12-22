@@ -2,19 +2,19 @@
 	"name": "stardust",
 	"version": "0.0.0",
 	"description": "A customizable modular application engine, written in TypeScript",
-	"main": "dist/index.js",
 	"source": "src",
-	"types": "dist",
 	"engines": {
 		"node": ">=20.x"
 	},
 	"type": "commonjs",
 	"scripts": {
 		"deploy": "just run",
-		"clean": "rimraf .stardust",
-		"tsc": "tsc --build tsconfig.json",
-		"tsc-alias": "tsc-alias -p tsconfig.json",
-		"dev": "nodemon --exec \"npm run deploy\" -e \"ts\" -w src"
+		"clean": "just clean",
+		"dev": "just dev",
+		"dev-compiled": "just dev-compiled",
+		"build": "just build",
+		"run-bin": "just run-bin",
+		"check": "just check"
 	},
 	"repository": {
 		"type": "git",
@@ -36,8 +36,6 @@
 		"@typescript-eslint/parser": "^5.62.0",
 		"eslint": "^8.57.1",
 		"just-install": "^2.0.2",
-		"nodemon": "^3.1.10",
-		"sqlite3": "^5.1.7",
 		"tsc-alias": "^1.8.16",
 		"typescript": "5.4.5"
 	},
@@ -61,11 +59,15 @@
 		"rimraf": "^5.0.10",
 		"simple-git": "^3.28.0",
 		"socket.io": "^4.8.1",
+		"sqlite3": "^5.1.7",
 		"tmi.js": "^1.8.5",
 		"typeorm": "^0.3.24",
 		"uuid": "^9.0.1",
 		"vite": "^6.3.5",
 		"winston": "^3.17.0",
 		"zod": "^3.25.61"
-	}
+	},
+	"trustedDependencies": [
+		"sqlite3"
+	]
 }

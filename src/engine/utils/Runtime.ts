@@ -1,5 +1,6 @@
 import path from 'path';
-import child_process from 'child_process';
+import fs from 'fs';
+import Module from 'module';
 
 // PackageJSON
 export class PackageJSON {
@@ -65,12 +66,58 @@ export const getProcessPath = () => {
 };
 
 /**
- * Returns the root path of the project
- * @returns {string} The absolute path of the root directory
+ * Holds the application (user space) root path if explicitly set
  */
+let APP_ROOT_OVERRIDE: string | null = null;
+const REGISTERED_NODE_MODULES = new Set<string>();
+
+const normalizeNodeModulesPath = (dir: string) => path.resolve(dir);
+
+const refreshNodeModuleResolution = () => {
+	const moduleCtor = Module as unknown as { _initPaths?: () => void } & typeof Module;
+	moduleCtor._initPaths?.();
+};
+
+const updateNodePathEnv = () => {
+	const segments = new Set<string>();
+	const existing = process.env.NODE_PATH ? process.env.NODE_PATH.split(path.delimiter).filter(Boolean) : [];
+	for (const segment of existing) segments.add(segment);
+	for (const dir of REGISTERED_NODE_MODULES) segments.add(dir);
+	process.env.NODE_PATH = Array.from(segments).join(path.delimiter);
+};
+
+export const registerNodeModulesDir = (dir: string) => {
+	const normalized = normalizeNodeModulesPath(dir);
+	if (REGISTERED_NODE_MODULES.has(normalized)) return normalized;
+	REGISTERED_NODE_MODULES.add(normalized);
+	type ModuleWithPaths = typeof Module & { globalPaths?: string[] };
+	const moduleWithPaths = Module as ModuleWithPaths;
+	const globalPaths = moduleWithPaths.globalPaths;
+	if (globalPaths && !globalPaths.includes(normalized)) {
+		globalPaths.push(normalized);
+	}
+	updateNodePathEnv();
+	refreshNodeModuleResolution();
+	return normalized;
+};
+
+/**
+ * Sets the application (user space) root path. If not set, defaults to process.cwd().
+ */
+export const setAppRootPath = (absPath: string) => {
+	APP_ROOT_OVERRIDE = path.resolve(absPath);
+	registerNodeModulesDir(path.join(APP_ROOT_OVERRIDE, "node_modules"));
+};
+
+/**
+ * Returns the application (user space) root path
+ */
+export const getAppRootPath = () => {
+	return APP_ROOT_OVERRIDE ?? getProcessPath();
+};
+
 export const getRootPath = () => {
-	const processPath = getProcessPath();
-	return isRunningAsCompiled() ? path.join(processPath, 'dist') : path.join(processPath, 'src');
+	return getAppRootPath();
 };
 
 /**
@@ -83,20 +130,13 @@ export const getRunningFileExtension = () => {
 	return thisFilename.slice(lastDot + 1);
 };
 
-/**
- * Returns whether the project is running as a compiled JavaScript file
- * @returns {boolean} Whether the project is running as a compiled JavaScript file
- */
-export const isRunningAsCompiled = () => {
-	return getRunningFileExtension() === 'js';
-};
 
 /**
  * Returns the absolute path of the public directory
  * @returns {string} The absolute path of the public directory
  */
 export const getWebPublicDir = () => {
-	return path.join(getProcessPath(), '/public');
+	return path.join(getAppRootPath(), '/public');
 };
 
 /**
@@ -104,7 +144,11 @@ export const getWebPublicDir = () => {
  * @returns {string} The absolute path of the modules directory
  */
 export const getModulePath = (module: string) => {
-	return path.join(getRootPath(), '/modules', module);
+	const appPath = path.join(getAppRootPath(), '/modules', module);
+	if (fs.existsSync(appPath)) return appPath;
+	// Fallback to engine source modules for built-ins during dev/compiled runs
+	const engineSrcPath = path.join(getProcessPath(), '/src/modules', module);
+	return engineSrcPath;
 };
 
 /**
@@ -112,43 +156,11 @@ export const getModulePath = (module: string) => {
  * @returns {string} The absolute path of the temp directory
  */
 export const getTempPath = () => {
-	return path.join(getProcessPath(), '/.stardust');
+	return path.join(getAppRootPath(), '/.stardust');
 }
 
-// Execution 
-
-// All of these functions are used to execute commands in the terminal and are deorecated
-
-/**
- * Returns whether the current system is Windows
- * @returns {boolean} Whether the current system is Windows
- * @deprecated
- */
-export const isWindows = () => {
-	return process.platform === 'win32';
-}
-
-/**
- * Returns whether the current system is Linux
- * @returns {boolean} Whether the current system is Linux
- * @deprecated
- */
-export const hasBash = () => {
-	return !isWindows();
-}
-
-/**
- * Spawns a command in the terminal
- * @param {string} command The command to run
- * @param {string[]} args The arguments to pass to the command
- * @returns {child_process.ChildProcess} The child process of the spawned command
- * @deprecated
- * @throws {Error} If the system does not have Bash
- */
-export const spawnBash = (command: string, args: string[]) => {
-	if (!hasBash()) {
-		throw new Error('Bash is not available on this system.');
-	}
-	return child_process.spawn(command, args);
-}
+// Execution helpers removed (previously deprecated):
+// - isWindows
+// - hasBash
+// - spawnBash
 
