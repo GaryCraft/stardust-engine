@@ -10,7 +10,7 @@ For reference you can check out the [Discord Module](../src/modules/discord/inde
 
 A module should have an object as default export that satisfies the `Module` type, with the following properties:
  - `name`: A unique string name, used to get the module using the `getModule` function.
- - `loadFunction`: An async function that receives the configuration, and should return the [Module Context](#module-context).
+ - `create`: An async function that receives the configuration, and should return the [Module Context](#module-context).
  - `initFunction`: An async function that receives the context, and should return nothing. you may use this function to finalize the module initialization.
  - `paths` (optional): An object with the following properties:
    - `hooks` (optional): A string that references the path to the hooks folder, relative to the module folder.
