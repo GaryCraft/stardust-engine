@@ -3,7 +3,7 @@ WORKDIR /app
 
 
 COPY package.json ./
-RUN bun install --production
+COPY package.json ./
 
 
 COPY src ./src
@@ -12,16 +12,15 @@ COPY tsconfig.json ./
 COPY config ./config
 COPY lang ./lang
 
-
-
 RUN mkdir -p /app/database /app/logs /app/temp
 
 ENV NODE_ENV=production
 ENV PARZIVAL_ENV=production
 ENV SD_ENV=production
+ENV SD_TEMP_DIR=/tmp/stardust
 
 
-COPY entrypoint.sh ./
+COPY .github/entrypoint.sh ./
 RUN chmod +x entrypoint.sh
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["/bin/bash", "/app/entrypoint.sh"]

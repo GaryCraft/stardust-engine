@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../../hermes_bot"
+		},
+		{
+			"path": "../../../PonWorks/taskpon"
 		}
 	],
 	"settings": {

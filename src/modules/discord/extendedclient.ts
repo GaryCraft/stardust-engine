@@ -77,8 +77,10 @@ export default class ExtendedClient extends Client {
 		const commandSchema = objectSchemaFrom(DSCommand);
 		const resolve = (sub: string) => {
 			const appBase = getModulePath("discord");
-			const appDir = path.join(appBase, sub);
-			if (fs.existsSync(appDir)) return appDir;
+			if (appBase) {
+				const appDir = path.join(appBase, sub);
+				if (fs.existsSync(appDir)) return appDir;
+			}
 			return path.join(getProcessPath(), "src/modules/discord", sub);
 		};
 		useImporterRecursive(resolve("commands"), function validator(i: any, f, d): i is DSCommand {

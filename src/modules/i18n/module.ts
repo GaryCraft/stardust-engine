@@ -28,10 +28,22 @@ export class I18nModule extends EventEmitter {
 		}
 	}
 	async initialize(config: I18nConfig) {
-		const langs = await readdir(path.join(getProcessPath(), "/lang"));
+		let langBase = path.join(getProcessPath(), "/lang");
+		try {
+			await readdir(langBase);
+		} catch (e) {
+			langBase = path.resolve(__dirname, "../../../lang");
+		}
+
+		const langs = await readdir(langBase);
 		const namespaces = await Promise.all(langs.map(async (lang) => {
-			const ns = await readdir(path.join(getProcessPath(), `/lang/${lang}`));
-			return ns.map(n => n.split(".")[0]);
+			const langDir = path.join(langBase, lang);
+			try {
+				const ns = await readdir(langDir);
+				return ns.map(n => n.split(".")[0]);
+			} catch {
+				return [];
+			}
 		}));
 		const allNamespaces = Array.from(new Set(namespaces.flat()));
 		await this.i18n
@@ -43,8 +55,8 @@ export class I18nModule extends EventEmitter {
 				ns: allNamespaces,
 				defaultNS: "default",
 				backend: {
-					loadPath: path.join(getProcessPath(), "/lang/{{lng}}/{{ns}}.json"),
-					addPath: path.join(getProcessPath(), "/lang/{{lng}}/{{ns}}.missing.json"),
+					loadPath: path.join(langBase, "/{{lng}}/{{ns}}.json"),
+					addPath: path.join(langBase, "/{{lng}}/{{ns}}.missing.json"),
 				}
 			});
 	}

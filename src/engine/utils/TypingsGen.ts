@@ -83,7 +83,7 @@ export async function declareTypings() {
 	await emitTypingsBundle(tempTypingsDir);
 
 
-	const appTypingsDir = path.join(getAppRootPath(), '..', '.stardust', 'typings');
+	const appTypingsDir = path.join(getAppRootPath(), '.stardust', 'typings');
 	await resetTypingsDir(appTypingsDir, 'app typings folder');
 	await emitTypingsBundle(appTypingsDir);
 

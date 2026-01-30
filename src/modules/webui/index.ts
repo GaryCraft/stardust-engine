@@ -46,7 +46,7 @@ export default {
 			if (await fs.pathExists(manifestPath)) {
 				ssrManifest = JSON.parse(await fs.readFile(manifestPath, "utf-8"));
 			} else {
-				debug("SSR manifest not found after build; SSR rendering disabled");
+
 			}
 			const template = await fs.readFile(path.join(WebBuildToPath, '/client/index.html'), 'utf-8');
 			let renderer;

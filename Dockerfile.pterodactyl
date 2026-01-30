@@ -1,0 +1,40 @@
+FROM oven/bun:1-slim
+
+# Pterodactyl expects code to be run from /home/container
+WORKDIR /home/container
+
+# Install dependencies for healthchecks and build tools for native modules (sqlite3, etc.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl jq python3 make g++ build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Fix npm/bun cache location to avoid EROFS on /.npm
+ENV NPM_CONFIG_CACHE=/tmp/.npm
+# IMPORTANT: Set HOME to /home/container to ensure tools looking for ~ (like npm/node-gyp)
+# don't default to / (root) which is read-only.
+ENV HOME=/home/container
+
+# Copy engine files to /app (Read-only engine core)
+COPY package.json /app/
+COPY src /app/src
+COPY .justfile /app/
+COPY tsconfig.json /app/
+COPY config /app/config
+COPY lang /app/lang
+COPY .github/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Create necessary directories in /app (though they might be read-only at runtime, standard practice)
+RUN mkdir -p /app/database /app/logs /app/temp
+
+# IMPORTANT: Link /app/node_modules to /home/container/node_modules
+# This allows the engine in /app to resolve dependencies installed in the user's directory
+RUN ln -s /home/container/node_modules /app/node_modules
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV SD_ENV=production
+ENV SD_TEMP_DIR=/home/container/.stardust
+
+# Pterodactyl Entrypoint
+CMD ["/bin/bash", "/app/entrypoint.sh"]
