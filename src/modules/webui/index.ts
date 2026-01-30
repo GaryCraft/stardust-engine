@@ -40,7 +40,7 @@ export default {
 				error("Web build not found in public directory");
 				return;
 			}
-			appCtx.http.server.use(express.static(clientPath));
+			appCtx.http.server.use(express.static(clientPath, { index: false }));
 			const manifestPath = path.join(WebBuildToPath, "/client/.vite/ssr-manifest.json");
 			let ssrManifest: Record<string, unknown> | undefined;
 			if (await fs.pathExists(manifestPath)) {
@@ -49,8 +49,13 @@ export default {
 				debug("SSR manifest not found after build; SSR rendering disabled");
 			}
 			const template = await fs.readFile(path.join(WebBuildToPath, '/client/index.html'), 'utf-8');
-			const renderer = (require(`${WebBuildToPath}/server/entry-server.js`)).render;
-			if (ssrManifest) {
+			let renderer;
+			try {
+				renderer = (require(`${WebBuildToPath}/server/entry-server.js`)).render;
+			} catch (e) {
+				error("Failed to load SSR entry-server.js", e);
+			}
+			if (ssrManifest && renderer) {
 				listenSSR(appCtx.http.server, renderer, template, ssrManifest);
 			} else {
 				appCtx.http.server.use((req, res, next) => {

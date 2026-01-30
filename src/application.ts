@@ -26,10 +26,11 @@ const sqliteOptions = (): SqliteConnectionOptions => ({
 	database: `${getTempPath()}/database.sqlite`,
 	synchronize: (getConfigProperty("database.sync") as boolean | undefined) ?? false,
 	logging: (getConfigProperty("database.logging") as boolean | undefined) ?? false,
-	entities: [
-		`${getAppRootPath()}/database/models/**/*.js`,
-		`${getAppRootPath()}/database/models/**/*.ts`,
-	],
+	entities: (() => {
+		const path = `${getAppRootPath()}/database/models/**/*.ts`;
+		debug(`Loading entities from: ${path}`);
+		return [path];
+	})(),
 });
 
 const mysqlOptions = (): MysqlConnectionOptions => ({
@@ -42,7 +43,6 @@ const mysqlOptions = (): MysqlConnectionOptions => ({
 	synchronize: (getConfigProperty("database.sync") as boolean | undefined) ?? false,
 	logging: (getConfigProperty("database.logging") as boolean | undefined) ?? false,
 	entities: [
-		`${getAppRootPath()}/database/models/**/*.js`,
 		`${getAppRootPath()}/database/models/**/*.ts`,
 	],
 	charset: "utf8mb4",
@@ -87,8 +87,8 @@ export const init = async () => {
 		"modules:load",
 		"app:load",
 		"database:connect",
-		"modules:init",
 		"user:load",
+		"modules:init",
 		"cli:start",
 		"http:bindstatic",
 		"http:listen",

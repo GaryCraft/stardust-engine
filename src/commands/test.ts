@@ -40,7 +40,6 @@ export default {
 				const db = getDatabase();
 				const allRepos = db.entityMetadatas.map((x) => x.name);
 				debug("All repositories: ", allRepos);
-				// Make the database do something
 				const res = await db.query("SELECT 1+1 AS result").catch((err) => {
 					error("Error: ", err);
 				});

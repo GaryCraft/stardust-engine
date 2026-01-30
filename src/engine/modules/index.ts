@@ -57,6 +57,12 @@ export default class Module<CTX extends EventEmitter, CFGKey extends NModuleCfgK
 		validateReturns: false,
 	})
 	initFunction!: (ctx: CTX, config: CFGKey extends "none" ? undefined : XModuleConfigs[CFGKey]) => Promise<void>;
+	@ValidateProperty({
+		type: "array",
+		subTypeOptions: { type: "string" },
+		optional: true,
+	})
+	dependencies?: string[];
 }
 export class ModuleManager {
 	readonly modules: Map<string, {

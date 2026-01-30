@@ -39,29 +39,44 @@ const getColor = (type: LogType) => {
 function getLoggingPath() {
 	return path.join(getTempPath(), "logs");
 }
-const moduleRegex = /(src)[\/\\](.*?)(\.ts|\.js)/g;
+const moduleRegex = /((?:src|node_modules)[\/\\])(.*?)(\.ts|\.js)/g;
 
 export function getCurrentModule(stack: string) {
 	try {
-		const lines = stack.split("\n");
-		const hits = lines
-			.map((line) => line.match(moduleRegex))
-			.filter(Boolean) as RegExpMatchArray[];
-		const match = (hits[hits.length - 1] || hits[0])?.[0];
+		const allMatches = Array.from(stack.matchAll(moduleRegex));
+		const match = allMatches[allMatches.length - 1] || allMatches[0];
+
 		if (!match) return "unknown";
-		const idx = match.indexOf("src/");
-		const sub = idx >= 0 ? match.slice(idx + 4) : match;
-		return sub.replace(/\.(ts|js)$/i, "");
+
+		const type = match[1];
+		const pathPart = match[2];
+
+		if (type.includes("node_modules")) {
+			const parts = pathPart.split("/");
+			let libName = parts[0];
+			let restPath = parts.slice(1).join("/");
+
+			if (libName.startsWith("@") && parts.length > 1) {
+				libName = `${parts[0]}/${parts[1]}`;
+				restPath = parts.slice(2).join("/");
+			}
+
+			return `${libName}:${restPath}`;
+		} else {
+			return pathPart.replace(/\.(ts|js)$/i, "");
+		}
 	} catch {
 		return "unknown";
 	}
 }
+
 function getLogDate() {
 	const date = new Date();
 	const mm = String(date.getMonth() + 1).padStart(2, "0");
 	const dd = String(date.getDate()).padStart(2, "0");
 	return `${date.getFullYear()}-${mm}-${dd}`;
 }
+
 const stardustformat = format.printf(({ level, message, ...meta }) => {
 	const color = getColor(level as LogType);
 	const timestamp = new Date().toISOString();
@@ -85,6 +100,7 @@ const logger = winston.createLogger({
 		new winston.transports.File({ filename: `${getLoggingPath()}/${getLogDate()}-errors.log` })
 	],
 });
+
 function streamlineArgs(args: unknown[]) {
 	const newargs: string[] = [];
 	for (const arg of args) {
@@ -131,7 +147,3 @@ export function debug(message: string, ...args: any[]) {
 export function clear(message: string) {
 	log("clear", message, "");
 }
-/* export function clearLog(...text: TemplateStringsArray[]) {
-	// TODO: Make this work
-	console.log(text.join("\n"));
-} */

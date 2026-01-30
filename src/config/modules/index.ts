@@ -2,6 +2,7 @@ import { Parseable, ValidateProperty } from "parzival";
 import DiscordConfig from "./discord";
 import I18nConfig from "./i18n";
 import OrizuruConfig from "./orizuru";
+import TwitchConfig from "./twitch";
 @Parseable()
 export default class ModuleConfigs {
 	@ValidateProperty({
@@ -25,4 +26,12 @@ export default class ModuleConfigs {
 		optional: true,
 	})
 	orizuru!: OrizuruConfig;
+
+	@ValidateProperty({
+		type: "object",
+		recurse: true,
+		className: "TwitchConfig",
+		optional: true,
+	})
+	twitch!: TwitchConfig;
 }

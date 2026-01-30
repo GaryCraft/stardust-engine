@@ -1,4 +1,4 @@
-// Use namespace import to be robust across CJS/ESM/Bun compile default interop
+
 import * as findRecursiveNs from "@spaceproject/findrecursive";
 type Validator<T> = (imported: unknown, file: string, dir: string) => imported is T | null;
 type Loader<T> = (imported: T, file: string, dir: string) => void;
@@ -13,11 +13,9 @@ export async function useImporter<T>(file: string, dir: string, validator: Valid
 }
 export async function useImporterRecursive<T>(dir: string, validator: Validator<T>, loader: Loader<T>, middleware?: (file: string, dir: string) => void) {
 
-	// TODO: optimize
-	// Normalize default export vs namespace export (Bun compile may wrap default differently)
 	const unwrapDefault = (m: any) => {
 		let v = m;
-		// unwrap up to a few times to handle nested default wrappers
+
 		for (let i = 0; i < 5; i++) {
 			if (typeof v === "function") return v;
 			if (v && typeof v.default !== "undefined") v = v.default;

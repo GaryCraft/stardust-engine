@@ -29,6 +29,7 @@ export default {
 		hooks: "hooks",
 		commands: "cli",
 	},
+	dependencies: ["discord.js"],
 	create: async (config) => {
 		let intents: GatewayIntentBits[] = [];
 		if (getConfigValue("node_env") === "development") {

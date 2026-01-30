@@ -50,7 +50,6 @@ function redactConfig(obj: any, depth = 0, seen = new WeakSet()): any {
 		if (isSensitive && typeof v === "string") {
 			out[k] = maskString(v);
 		} else if (isSensitive && typeof v === "object" && v !== null) {
-			// If an object under a sensitive key, redact all string leaves shallowly
 			const inner: any = Array.isArray(v) ? [] : {};
 			for (const [ik, iv] of Object.entries(v)) {
 				inner[ik] = typeof iv === "string" ? maskString(iv) : iv;

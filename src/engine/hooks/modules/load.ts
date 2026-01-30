@@ -12,7 +12,7 @@ import type { GeneralEventEmitter } from "eventemitter2";
 import ModuleConfigs from "@src/config/modules";
 import path from "path";
 import { declareTypings } from "@src/engine/utils/TypingsGen";
-import { BuiltinModules } from "@src/engine/modules/builtin";
+import { BuiltinModules, BuiltinModuleEntry } from "@src/engine/modules/builtin";
 
 type GeneralEmmiterAdapted<T extends EventEmitter> = T & GeneralEventEmitter;
 
@@ -44,12 +44,49 @@ const forwardModuleEvents = (appCtx: ApplicationContext, emitter: GeneralEmmiter
 export default async function (appCtx: ApplicationContext) {
 	debug("Loading modules");
 
-	// Check for disabled modules
-	// Check for disabled modules
 	const disabledModules = getDisabledModules();
 
-	// Load engine-provided builtin modules
-	for (const entry of BuiltinModules) {
+	const allModules = new Map<string, BuiltinModuleEntry>();
+
+	for (const m of BuiltinModules) {
+		allModules.set(m.name, m);
+	}
+
+	const appModulesDir = path.join(getAppRootPath(), "modules");
+	if (fs.existsSync(appModulesDir)) {
+		try {
+			const entries = await fs.promises.readdir(appModulesDir, { withFileTypes: true });
+			for (const dirent of entries) {
+				if (dirent.isDirectory()) {
+					const name = dirent.name;
+					const absSpecifier = path.join(appModulesDir, name);
+					const entryFile = path.join(absSpecifier, "index.ts");
+					if (fs.existsSync(entryFile)) {
+						try {
+							const def = (await import(entryFile)).default;
+							if (!def || !def.name) {
+								warn(`User module ${name} has no default export or missing name property`);
+								continue;
+							}
+							allModules.set(name, {
+								name,
+								def,
+								absSpecifier,
+								baseDir: absSpecifier
+							});
+							debug(`Discovered user module: ${name}`);
+						} catch (e) {
+							warn(`Failed to import user module ${name}`, e);
+						}
+					}
+				}
+			}
+		} catch (e) {
+			warn("Failed to scan user modules directory", e);
+		}
+	}
+
+	for (const entry of allModules.values()) {
 		if (appCtx.modman.modules.has(entry.name)) continue;
 		if (disabledModules.has(entry.name)) {
 			warn(`Module ${entry.name} is disabled via .sd_mod_disabled`);
@@ -58,6 +95,16 @@ export default async function (appCtx: ApplicationContext) {
 
 		try {
 			const def = entry.def as Module<any, any>;
+
+			if (def.dependencies && def.dependencies.length > 0) {
+				const { checkDependency } = await import("../../utils/Runtime.js");
+				const missingDeps = def.dependencies.filter(dep => !checkDependency(dep));
+				if (missingDeps.length > 0) {
+					warn(`Module ${entry.name} disabled: Missing dependencies: ${missingDeps.join(", ")}`);
+					continue;
+				}
+			}
+
 			const config = getConfigProperty(`modules.${entry.name}`) as XModuleConfigs[NModuleCfgKey];
 			const moduleLoaded = await def.create(config!);
 			debug(`Loaded builtin module context for ${entry.name}`);
@@ -70,7 +117,6 @@ export default async function (appCtx: ApplicationContext) {
 			const moduleEmitterAdapted = adaptEmitter(getModule(entry.name as keyof ModuleConfigs)!);
 			forwardModuleEvents(appCtx, moduleEmitterAdapted, entry.name);
 
-			// Try to load builtin module assets from source tree when available (dev/uncompiled)
 			try {
 				if (def.paths?.hooks) {
 					debug(`Loading Builtin Module Hooks for ${entry.name}`);
@@ -129,8 +175,6 @@ export default async function (appCtx: ApplicationContext) {
 						for (const spec of entry.assets.routes) {
 							const routeModule = (await import(spec)).default as HTTPRouteHandler | undefined;
 							if (!routeModule || !validateObject(routeModule, validationSchema)) continue;
-							// For static specifiers we can't infer parsedRoute reliably; skip registration path calc
-							// Expect specifiers array to mirror route tree if used.
 							const file = spec.split("/").pop() || "";
 							const base = def.paths?.routes ?? "routes";
 							const parsedRoute = `/${file.split(".")[0]}`.replace(/\$/g, ":");

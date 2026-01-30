@@ -19,6 +19,9 @@
 			],
 			"@config/*": [
 				"config/*"
+			],
+			"stardust": [
+				"src/engine/api/index.ts"
 			]
 		}
 	},

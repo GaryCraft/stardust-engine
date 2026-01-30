@@ -1,4 +1,5 @@
 import { fileURLToPath } from "url";
+import path from "path";
 import fs from "fs-extra";
 import { Application } from "express";
 import { spawnChild } from "@src/engine/utils/Process";
@@ -16,6 +17,10 @@ export async function buildWebUI(from: string, to: string) {
 		error("Failed to install dependencies for webui", e);
 		errored = true;
 	}).then((result) => {
+		if (result && result.code !== 0) {
+			error("Failed to install dependencies for webui", result.stderr);
+			errored = true;
+		}
 		debug("bun install result", result);
 	});
 	if (errored) return false;
@@ -24,6 +29,10 @@ export async function buildWebUI(from: string, to: string) {
 		error("Failed to build webui", e);
 		errored = true;
 	}).then((result) => {
+		if (result && result.code !== 0) {
+			error("Failed to build webui", result.stderr);
+			errored = true;
+		}
 		debug("bun run build result", result);
 	});
 	if (errored) return false;
@@ -35,6 +44,14 @@ export async function buildWebUI(from: string, to: string) {
 		errored = true;
 	});
 	if (errored) return false;
+
+	const nodeModulesFrom = path.join(fromPath, "node_modules");
+	const nodeModulesTo = path.join(toPath, "node_modules");
+	if (await fs.pathExists(nodeModulesFrom)) {
+		await fs.remove(nodeModulesTo);
+		await fs.ensureSymlink(nodeModulesFrom, nodeModulesTo);
+		debug(`Symlinked node_modules from ${nodeModulesFrom} to ${nodeModulesTo}`);
+	}
 
 	return true;
 }
@@ -52,11 +69,14 @@ export async function devWebUI(from: string, port: number) {
 }
 
 export function listenSSR(http: Application, render: any, template: string, ssrManifest: any) {
-	http.use('*', async (req, res) => {
+	http.use('*', async (req: any, res: any, next: any) => {
+		if (req.method !== 'GET') return next();
+		if (!req.headers.accept?.includes('text/html')) return next();
+		if (req.originalUrl.startsWith("/.stardust")) return next();
 		try {
 			debug(`SSR request: ${req.originalUrl}`)
 			const url = req.originalUrl.replace("/", '')
-			const { stream } = render(url, ssrManifest, 'utf-8')
+			const { stream } = await render(url, ssrManifest, 'utf-8')
 
 			const [htmlStart, htmlEnd] = template.split('<!--app-html-->')
 

@@ -1,8 +1,9 @@
 import path from 'path';
 import fs from 'fs';
 import Module from 'module';
+import { warn, error, info, debug } from './Logger';
 
-// PackageJSON
+
 export class PackageJSON {
 	private singleton: PackageJSON | null = null;
 	name?: string;
@@ -18,6 +19,7 @@ export class PackageJSON {
 		url: string;
 	};
 	dependencies?: Record<string, string>;
+	peerDependencies?: Record<string, string>;
 	devDependencies?: Record<string, string>;
 	bugs?: {
 		url: string;
@@ -28,7 +30,14 @@ export class PackageJSON {
 	scripts?: Record<string, string>;
 	constructor() {
 		if (this.singleton) return this.singleton;
-		const packageJSON = require(`${getProcessPath()}/package.json`);
+
+		let packageJSON;
+		try {
+			packageJSON = require(path.join(getProcessPath(), 'package.json'));
+		} catch (e) {
+			warn("Could not load engine package.json");
+			packageJSON = {};
+		}
 		this.name = packageJSON.name;
 		this.version = packageJSON.version;
 		this.description = packageJSON.description;
@@ -39,6 +48,7 @@ export class PackageJSON {
 		this.type = packageJSON.type;
 		this.repository = packageJSON.repository;
 		this.dependencies = packageJSON.dependencies;
+		this.peerDependencies = packageJSON.peerDependencies;
 		this.devDependencies = packageJSON.devDependencies;
 		this.bugs = packageJSON.bugs;
 		this.engines = packageJSON.engines;
@@ -55,10 +65,10 @@ export const getPackageJSON = () => {
 };
 
 
-// Paths
+
 
 /**
- * Returns the current working directory of the Node.js process
+ * Returns the current working directory of the process
  * @returns {string} The absolute path of the current working directory
  */
 export const getProcessPath = () => {
@@ -78,6 +88,7 @@ const refreshNodeModuleResolution = () => {
 	moduleCtor._initPaths?.();
 };
 
+
 const updateNodePathEnv = () => {
 	const segments = new Set<string>();
 	const existing = process.env.NODE_PATH ? process.env.NODE_PATH.split(path.delimiter).filter(Boolean) : [];
@@ -90,6 +101,8 @@ export const registerNodeModulesDir = (dir: string) => {
 	const normalized = normalizeNodeModulesPath(dir);
 	if (REGISTERED_NODE_MODULES.has(normalized)) return normalized;
 	REGISTERED_NODE_MODULES.add(normalized);
+
+
 	type ModuleWithPaths = typeof Module & { globalPaths?: string[] };
 	const moduleWithPaths = Module as ModuleWithPaths;
 	const globalPaths = moduleWithPaths.globalPaths;
@@ -105,8 +118,16 @@ export const registerNodeModulesDir = (dir: string) => {
  * Sets the application (user space) root path. If not set, defaults to process.cwd().
  */
 export const setAppRootPath = (absPath: string) => {
-	APP_ROOT_OVERRIDE = path.resolve(absPath);
-	registerNodeModulesDir(path.join(APP_ROOT_OVERRIDE, "node_modules"));
+	const resolved = path.resolve(absPath);
+	if (!fs.existsSync(resolved)) {
+		warn(`App root path does not exist: ${resolved}`);
+	}
+	APP_ROOT_OVERRIDE = resolved;
+
+	const appNodeModules = path.join(APP_ROOT_OVERRIDE, "node_modules");
+	if (fs.existsSync(appNodeModules)) {
+		registerNodeModulesDir(appNodeModules);
+	}
 };
 
 /**
@@ -121,13 +142,53 @@ export const getRootPath = () => {
 };
 
 /**
- * Returns the file extension of the running file
- * @returns {string} The file extension of the current running file
+ * Validates that the current environment's node_modules satisfies the engine's requirements.
+ * Exits the process if dependencies are missing.
  */
-export const getRunningFileExtension = () => {
-	const thisFilename = __filename;
-	const lastDot = thisFilename.lastIndexOf('.');
-	return thisFilename.slice(lastDot + 1);
+export const validateDependencies = () => {
+	const enginePkg = getPackageJSON();
+	if (!enginePkg.dependencies) return;
+
+	debug("Validating dependencies against host environment...");
+	const missing: string[] = [];
+
+
+	const depsToCheck = {
+		...enginePkg.dependencies,
+		...enginePkg.peerDependencies
+	};
+
+
+	for (const dep of Object.keys(depsToCheck)) {
+		try {
+			require.resolve(dep);
+		} catch (e) {
+			missing.push(dep);
+		}
+	}
+
+	if (missing.length > 0) {
+		error("CRITICAL: Missing dependencies in host environment!");
+		error("The following packages are required by the engine but not found:");
+		missing.forEach(m => console.error(` - ${m}`));
+		console.error("\nPlease install them in your application's package.json");
+		process.exit(1);
+	}
+	info("Dependency validation passed.");
+};
+
+
+/**
+ * Checks if a specific dependency is available in the environment.
+ * Does NOT throw or exit.
+ */
+export const checkDependency = (pkgName: string): boolean => {
+	try {
+		require.resolve(pkgName);
+		return true;
+	} catch (e) {
+		return false;
+	}
 };
 
 
@@ -140,15 +201,22 @@ export const getWebPublicDir = () => {
 };
 
 /**
- * Returns the absolute path of the modules directory
- * @returns {string} The absolute path of the modules directory
+ * Returns the absolute path of the modules directory.
+
  */
 export const getModulePath = (module: string) => {
-	const appPath = path.join(getAppRootPath(), '/modules', module);
-	if (fs.existsSync(appPath)) return appPath;
-	// Fallback to engine source modules for built-ins during dev/compiled runs
-	const engineSrcPath = path.join(getProcessPath(), '/src/modules', module);
-	return engineSrcPath;
+
+	const appModulePath = path.join(getAppRootPath(), 'modules', module);
+	if (fs.existsSync(appModulePath)) return appModulePath;
+
+
+
+
+
+	const engineModulePath = path.resolve(__dirname, '../../../modules', module);
+	if (fs.existsSync(engineModulePath)) return engineModulePath;
+
+
 };
 
 /**
@@ -164,7 +232,7 @@ export const getTempPath = () => {
  * @returns {Set<string>} Set of disabled module names
  */
 export const getDisabledModules = (): Set<string> => {
-	const disabledPath = path.join(getProcessPath(), ".sd_mod_disabled");
+	const disabledPath = path.join(getAppRootPath(), ".sd_mod_disabled");
 	const disabledModules = new Set<string>();
 	if (fs.existsSync(disabledPath)) {
 		const content = fs.readFileSync(disabledPath, "utf-8");
@@ -172,4 +240,3 @@ export const getDisabledModules = (): Set<string> => {
 	}
 	return disabledModules;
 };
-

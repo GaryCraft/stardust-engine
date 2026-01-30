@@ -8,18 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Remove SDM Modules
-        ## Delete all src/modules folders excepting discord
-        ## Also Delete all the src/config/modules files, excepting index.ts and discord.ts
-        ## And delete all text between //$StripStart to //$StripEnd comments
+      - name: Cleanup
         run: |
-          find src/modules -mindepth 1 -maxdepth 1 -type d -not -name discord -exec rm -rf {} \;
-          find src/config/modules -type f -not -name 'index.ts' -not -name 'discord.ts' -delete
-          find src -type f -exec sed -i '/\/\/\$StripStart/,/\/\/\$StripEnd/d' {} \;
+          # find src -type f -exec sed -i '/\/\/\$StripStart/,/\/\/\$StripEnd/d' {} \;
       - name: Remove release branch
         run: |
           git push origin --delete release
-      ## Commit Changes to release
       - name: Commit Changes
         run: |
           git config --local user.email "githubactions@our-space.xyz"

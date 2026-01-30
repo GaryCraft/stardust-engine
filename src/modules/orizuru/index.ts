@@ -1,4 +1,5 @@
 import Module from "@src/engine/modules";
+import path from "path";
 import { debug, warn } from "@src/engine/utils/Logger";
 import { HANDLER_TYPE, HandlerFunction, HandlerType, Orizuru } from "@garycraft/orizuru";
 import { getAppContext } from "@src/engine/utils/Composable";
@@ -22,7 +23,7 @@ export default {
 			}
 			return true;
 		}, function loader(handler, file, dir) {
-			const handlerName = file.replace(".ts", "").replace(".js", "") as HandlerType;
+			const handlerName = path.parse(file).name as HandlerType;
 			if (Object.values(HANDLER_TYPE).includes(handlerName)) {
 				o.addHandler(handlerName, handler.default);
 			}
