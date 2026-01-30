@@ -21,4 +21,7 @@ ENV PARZIVAL_ENV=production
 ENV SD_ENV=production
 
 
-ENTRYPOINT ["bun", "run", "src/index.ts"]
+COPY entrypoint.sh ./
+RUN chmod +x entrypoint.sh
+
+ENTRYPOINT ["/app/entrypoint.sh"]
