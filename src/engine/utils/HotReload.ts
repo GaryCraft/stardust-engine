@@ -1,5 +1,5 @@
 import type { ApplicationContext } from "@src/engine/types/Engine";
-import { unloadUserSpace } from "@src/engine/user/Loader";
+import { unloadUserSpace } from "../user/Loader";
 
 type EventBridge = ApplicationContext["events"] & {
 	stopListeningTo(target: unknown, event?: string | symbol): void;
