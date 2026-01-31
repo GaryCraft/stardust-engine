@@ -127,9 +127,9 @@ export type PathValue<T, P extends string> =
 export function getConfigProperty<P extends DotPath<GlobalConfig>>(cfgPath: P): PathValue<GlobalConfig, P> | null;
 export function getConfigProperty(cfgPath: string): unknown | null;
 export function getConfigProperty(cfgPath: string) {
-	if (!cachedConfig) return null;
+	const config = getConfig();
 	const parts = cfgPath.split(".");
-	let current: unknown = cachedConfig;
+	let current: unknown = config;
 	for (const key of parts) {
 		if (typeof current !== "object" || current === null) {
 			warn(`Config property ${key} not found in ${cfgPath}`);
