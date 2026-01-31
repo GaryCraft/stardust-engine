@@ -7,6 +7,8 @@
 		"moduleResolution": "NodeNext",
 		"removeComments": true,
 		"noEmit": true,
+		"allowImportingTsExtensions": true,
+		"rewriteRelativeImportExtensions": true,
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"strict": true,

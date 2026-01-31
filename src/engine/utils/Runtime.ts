@@ -213,7 +213,7 @@ export const getModulePath = (module: string) => {
 
 
 
-	const engineModulePath = path.resolve(__dirname, '../../../modules', module);
+	const engineModulePath = path.resolve(__dirname, '../../modules', module);
 	if (fs.existsSync(engineModulePath)) return engineModulePath;
 
 

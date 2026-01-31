@@ -81,7 +81,7 @@ export default class ExtendedClient extends Client {
 				const appDir = path.join(appBase, sub);
 				if (fs.existsSync(appDir)) return appDir;
 			}
-			return path.join(getProcessPath(), "src/modules/discord", sub);
+			return path.join(__dirname, sub);
 		};
 		useImporterRecursive(resolve("commands"), function validator(i: any, f, d): i is DSCommand {
 			if (!i) {

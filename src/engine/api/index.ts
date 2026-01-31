@@ -4,3 +4,4 @@ export * from "../types/Engine";
 export * from "../utils/Logger";
 export * from "../utils/Configuration";
 export * from "../utils/Composable";
+export * from "../modules";
