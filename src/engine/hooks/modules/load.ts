@@ -12,7 +12,8 @@ import type { GeneralEventEmitter } from "eventemitter2";
 import ModuleConfigs from "@src/config/modules";
 import path from "path";
 import { declareTypings } from "@src/engine/utils/TypingsGen";
-import { BuiltinModules, BuiltinModuleEntry } from "@src/engine/modules/builtin";
+import { LazyBuiltinModules, LazyBuiltinModuleEntry } from "@src/engine/modules/builtin";
+type AnyModuleEntry = LazyBuiltinModuleEntry;
 
 type GeneralEmmiterAdapted<T extends EventEmitter> = T & GeneralEventEmitter;
 
@@ -46,9 +47,9 @@ export default async function (appCtx: ApplicationContext) {
 
 	const disabledModules = getDisabledModules();
 
-	const allModules = new Map<string, BuiltinModuleEntry>();
+	const allModules = new Map<string, AnyModuleEntry>();
 
-	for (const m of BuiltinModules) {
+	for (const m of LazyBuiltinModules) {
 		allModules.set(m.name, m);
 	}
 
@@ -70,7 +71,7 @@ export default async function (appCtx: ApplicationContext) {
 							}
 							allModules.set(name, {
 								name,
-								def,
+								load: async () => def,
 								absSpecifier,
 								baseDir: absSpecifier
 							});
@@ -94,7 +95,7 @@ export default async function (appCtx: ApplicationContext) {
 		}
 
 		try {
-			const def = entry.def as Module<any, any>;
+			const def = await entry.load() as Module<any, any>;
 
 			if (def.dependencies && def.dependencies.length > 0) {
 				const { checkDependency } = await import("../../utils/Runtime.js");
